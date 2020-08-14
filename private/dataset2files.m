@@ -1,7 +1,7 @@
 function cfg = dataset2files(cfg)
 
 % Helper function that converts a dataset into headerfile and datafile
-% if neccessary. This is used in PREPROCESSING and DEFINETRIAL
+% if necessary. This is used in PREPROCESSING and DEFINETRIAL
 %
 % This function operates only on
 %   cfg.dataset
@@ -11,7 +11,7 @@ function cfg = dataset2files(cfg)
 
 % Copyright (C) 2004, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -41,20 +41,18 @@ if ~isfield(cfg, 'headerfile')
 end
 
 if ~isempty(cfg.dataset)
-  if strcmp(cfg.dataset, 'gui');
+  if strcmp(cfg.dataset, 'gui')
     d = uigetdir;
     if d==0
       [f, p] = uigetfile;
       if f==0
-        error('You should select a dataset file or directory');
+        ft_error('You should select a dataset file or directory');
       else
         d = fullfile(p, f);
       end
     end
     cfg.dataset = d;
   end
-  
-    
   
   switch ft_filetype(cfg.dataset)
     case 'ctf_ds'
@@ -78,15 +76,21 @@ if ~isempty(cfg.dataset)
       [path, file, ext] = fileparts(cfg.dataset);
       cfg.headerfile = fullfile(path, [file '.vhdr']);
       cfg.datafile   = fullfile(path, [file '.seg']);
+    case {'physionet_dat', 'physionet_hea'}
+      [path, file, ext] = fileparts(cfg.dataset);
+      cfg.headerfile = fullfile(path, [file '.hea']);
+      cfg.datafile   = fullfile(path, [file '.dat']);
     otherwise
       % convert dataset into filenames, assume that the header and data are the same
       cfg.datafile   = cfg.dataset;
       cfg.headerfile = cfg.dataset;
   end
-elseif ~isempty(cfg.datafile) && isempty(cfg.headerfile);
+  
+elseif ~isempty(cfg.datafile) && isempty(cfg.headerfile)
   % assume that  the datafile also contains the header
   cfg.headerfile = cfg.datafile;
-elseif isempty(cfg.datafile) && ~isempty(cfg.headerfile);
+
+elseif isempty(cfg.datafile) && ~isempty(cfg.headerfile)
   % assume that  the headerfile also contains the data
   cfg.datafile = cfg.headerfile;
 end

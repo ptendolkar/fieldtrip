@@ -1,10 +1,8 @@
 function test_bug2404
 
 % WALLTIME 00:10:00
-% MEM 1500mb
-
-% TEST test_bug2404
-% TEST ft_channelrepair
+% MEM 2gb
+% DEPENDENCY ft_channelrepair
 
 data = [];
 data.label = {'1', '2', '3'};

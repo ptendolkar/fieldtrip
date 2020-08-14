@@ -26,6 +26,7 @@ function source = ft_read_cifti(filename, varargin)
 %   'cortexleft'       = string, filename with left cortex (optional, default is automatic)
 %   'cortexright'      = string, filename with right cortex (optional, default is automatic)
 %   'hemisphereoffset' = number, amount in milimeter to move the hemispheres apart from each other (default = 0)
+%   'mapname'          = string, 'field' to represent multiple maps separately, or 'array' to represent as array (default = 'field')
 %   'debug'            = boolean, write a debug.xml file (default = false)
 %
 % See also FT_WRITE_CIFTI, FT_READ_MRI, FT_WRITE_MRI
@@ -37,7 +38,7 @@ function source = ft_read_cifti(filename, varargin)
 
 % Copyright (C) 2013-2015, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -61,9 +62,18 @@ cortexleft       = ft_getopt(varargin, 'cortexleft', {});
 cortexright      = ft_getopt(varargin, 'cortexright', {});
 hemisphereoffset = ft_getopt(varargin, 'hemisphereoffset', 0); % in mm, move the two hemispheres apart from each other
 debug            = ft_getopt(varargin, 'debug', false);
+mapname          = ft_getopt(varargin, 'mapname', 'field');
+dataformat       = ft_getopt(varargin, 'dataformat', []);
 
-% convert 'yes'/'no' into boolean
-readdata = istrue(readdata);
+if ft_filetype(filename, 'compressed')
+  % the file is compressed, unzip on the fly
+  inflated = true;
+  origfile = filename;
+  filename = inflate_file(filename);
+else
+  inflated = false;
+  origfile = filename;
+end
 
 % read the header section
 hdr = read_nifti2_hdr(filename);
@@ -71,27 +81,30 @@ hdr = read_nifti2_hdr(filename);
 % xml_offset = 540+12;
 % xml_size   = hdr.vox_offset-xml_offset-8;
 
-fid = fopen(filename, 'rb', hdr.endian);
+fid = fopen_or_error(filename, 'rb', hdr.endian);
 
 % determine the file size, this is used to catch endian errors
 fseek(fid, 0, 'eof');
 filesize = ftell(fid);
 fseek(fid, 0, 'bof');
 
-% set the default for readdata
 if isempty(readdata)
+  % set the default for readdata
   if filesize>1e9
-    warning('Not reading data by default in case filesize>1GB. Please specify the ''readdata'' option.');
+    ft_warning('Not reading data by default in case filesize>1GB. Please specify the ''readdata'' option.');
     readdata = false;
   else
     readdata = true;
   end
+else
+  % convert 'yes'/'no' into boolean
+  readdata = istrue(readdata);
 end
 
 fseek(fid, 540, 'bof');
 hdrext = fread(fid, [1 4], 'int8');
 if hdrext(1)~=1
-  error('cifti requires a header extension');
+  ft_error('cifti requires a header extension');
 end
 
 % determine the size of the header extension
@@ -101,13 +114,13 @@ etype = fread(fid, 1, 'int32=>int32');
 hdrsize = 540;
 voxsize = filesize-hdr.vox_offset;
 if esize>(filesize-hdrsize-voxsize)
-  warning('the endianness of the header extension is inconsistent with the nifti-2 header');
+  ft_warning('the endianness of the header extension is inconsistent with the nifti-2 header');
   esize = swapbytes(esize);
   etype = swapbytes(etype);
 end
 
 if etype~=32 && etype~=swapbytes(int32(32)) % FIXME there is an endian problem
-  error('the header extension type is not cifti');
+  ft_error('the header extension type is not cifti');
 end
 
 % read the extension content, subtract the 8 bytes from esize and etype
@@ -123,7 +136,7 @@ if debug
   try
     % write the xml section to a temporary file
     xmlfile = 'debug.xml';
-    tmp = fopen(xmlfile, 'w');
+    tmp = fopen_or_error(xmlfile, 'w');
     fwrite(tmp, xmldata);
     fclose(tmp);
   end
@@ -173,10 +186,20 @@ for i=1:length(uid_MatrixIndicesMap)
     end
   end
   
-  uid_Volume = find(map,'/MatrixIndicesMap/Volume');
+  switch Cifti.Version
+    case {'1' '1.0'}
+      uid_Volume = find(tree,'/CIFTI/Matrix/Volume');
+    case {'2' '2.0'}
+      uid_Volume = find(map,'/MatrixIndicesMap/Volume');
+  end
   % the following will fail if there are multiple volumes
   if ~isempty(uid_Volume)
-    volume = branch(map, uid_Volume);
+    switch Cifti.Version
+      case {'1' '1.0'}
+        volume = branch(tree, uid_Volume);
+      case {'2' '2.0'}
+        volume = branch(map, uid_Volume);
+    end
     attr = attributes(volume, 'get', 1); % there should only be one attribute here
     if ~iscell(attr), attr = {attr}; end % treat one attribute just like multiple attributes
     for j=1:numel(attr)
@@ -335,7 +358,7 @@ for i=1:length(uid_MatrixIndicesMap)
             Surface(end  ).SurfaceNumberOfVertices = MatrixIndicesMap(i).BrainModel(j).SurfaceNumberOfVertices;
             
           otherwise
-            error('unsupported cifti version');
+            ft_error('unsupported cifti version');
         end % switch version
         
         
@@ -344,7 +367,7 @@ for i=1:length(uid_MatrixIndicesMap)
         MatrixIndicesMap(i).BrainModel(j).VoxelIndicesIJK = reshape(tmp, 3, [])' + 1; % transpose, one offset
         
       otherwise
-        error('unsupported ModelType');
+        ft_error('unsupported ModelType');
     end % switch ModelType
   end % for each BrainModel
 end % for each MatrixIndicesMap
@@ -363,7 +386,7 @@ if readdata
     case  64, [voxdata, nitemsread] = fread(fid, inf, 'double');  assert(nitemsread==prod(hdr.dim(2:end)), 'could not read all data');
     case 512, [voxdata, nitemsread] = fread(fid, inf, 'ushort');  assert(nitemsread==prod(hdr.dim(2:end)), 'could not read all data');
     case 768, [voxdata, nitemsread] = fread(fid, inf, 'uint');    assert(nitemsread==prod(hdr.dim(2:end)), 'could not read all data');
-    otherwise, error('unsupported datatype');
+    otherwise, ft_error('unsupported datatype');
   end
   % hdr.dim(1) is the number of dimensions
   % hdr.dim(2) is reserved for the x-dimension
@@ -374,6 +397,11 @@ if readdata
   voxdata = reshape(voxdata, hdr.dim(6:end));
 end
 fclose(fid);
+
+if inflated
+  % compressed file has been unzipped on the fly, clean up
+  delete(filename);
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % convert to FieldTrip source representation, i.e. according to FT_DATATYPE_SOURCE and FT_DATATYPE_PARCELLATION
@@ -440,13 +468,13 @@ for i=1:length(MatrixIndicesMap)
         case 'SECOND'
           dimord(MatrixIndicesMap(i).AppliesToMatrixDimension+1) = {'time'};
           Cifti.time = (((1:MatrixIndicesMap(i).NumberOfSeriesPoints)-1) * MatrixIndicesMap(i).SeriesStep + MatrixIndicesMap(i).SeriesStart) * 10^MatrixIndicesMap(i).SeriesExponent;
-        case 'HZ'
+        case 'HERTZ'
           dimord(MatrixIndicesMap(i).AppliesToMatrixDimension+1) = {'freq'};
           Cifti.freq = (((1:MatrixIndicesMap(i).NumberOfSeriesPoints)-1) * MatrixIndicesMap(i).SeriesStep + MatrixIndicesMap(i).SeriesStart) * 10^MatrixIndicesMap(i).SeriesExponent;
           % case 'METER'
           % case 'RADIAN'
         otherwise
-          error('unsupported SeriesUnit');
+          ft_error('unsupported SeriesUnit');
       end % switch SeriesUnit
       
     case 'CIFTI_INDEX_TYPE_SCALARS'
@@ -461,6 +489,14 @@ for i=1:length(MatrixIndicesMap)
         key = NamedMap(j).LabelTable.Key;
         lab = NamedMap(j).LabelTable.Label;
         sel = key>0;
+        if isfield(NamedMap(j).LabelTable, 'Red')
+          % assume rgba to be also specified
+          rgba = [NamedMap(j).LabelTable.Red(:) ...
+                  NamedMap(j).LabelTable.Green(:) ...
+                  NamedMap(j).LabelTable.Blue(:) ...
+                  NamedMap(j).LabelTable.Alpha(:)];
+          Cifti.rgba{j} = rgba(sel,:);
+        end          
         Cifti.labeltable{j}(key(sel)) = lab(sel);
         Cifti.mapname{j} = fixname(NamedMap(j).MapName);
       end
@@ -473,11 +509,11 @@ for i=1:length(MatrixIndicesMap)
           Cifti.fsample = 1/str2double(MatrixIndicesMap(i).TimeStep);
         otherwise
           % other units should be trivial to implement
-          error('unsupported TimeStepUnits "%s"', MatrixIndicesMap(i).TimeStepUnits);
+          ft_error('unsupported TimeStepUnits "%s"', MatrixIndicesMap(i).TimeStepUnits);
       end % switch TimeStepUnits
       
     otherwise
-      error('unsupported IndicesMapToDataType');
+      ft_error('unsupported IndicesMapToDataType');
   end % switch IndicesMapToDataType
 end % for each MatrixIndicesMap
 
@@ -513,7 +549,7 @@ if ~isempty(BrainModel)
             greynodeIndex{i}       = BrainModel(i).VertexIndices;
             brainstructureIndex{i} = 1:BrainModel(i).SurfaceNumberOfVertices;
           otherwise
-            error('unsupported cifti version');
+            ft_error('unsupported cifti version');
         end % switch
         
         sel = find(strcmp({Surface(:).BrainStructure}, BrainModel(i).BrainStructure));
@@ -526,7 +562,7 @@ if ~isempty(BrainModel)
         surfaceIndex(i) = nan; % does not map onto surface
         
       otherwise
-        error('unsupported ModelType "%s"', BrainModel(i).ModelType);
+        ft_error('unsupported ModelType "%s"', BrainModel(i).ModelType);
     end
   end % for each BrainModel
   
@@ -550,7 +586,7 @@ if ~isempty(BrainModel)
   if ~isempty(Surface)
     voxeloffset = sum([Surface.SurfaceNumberOfVertices]);
   else
-    voxeloffset  = 0;
+    voxeloffset = 0;
   end
   
   greynodeOffset = nan(size(BrainModel));
@@ -705,6 +741,10 @@ if readdata
       Ntime = size(voxdata,3);
       dat = nan(Ngreynodes,Ngreynodes,Ntime);
       dat(greynodeIndex(dataIndex),greynodeIndex(dataIndex),:) = voxdata;
+    case {'pos_pos_freq' 'chan_chan_freq'}
+      Ntime = size(voxdata,3);
+      dat = nan(Ngreynodes,Ngreynodes,Ntime);
+      dat(greynodeIndex(dataIndex),greynodeIndex(dataIndex),:) = voxdata;
       
       % the following representations need to be transposed to be consistent with FieldTrip
     case 'time_pos'
@@ -727,29 +767,72 @@ if readdata
       dat = nan(Ngreynodes,Ngreynodes,Ntime);
       dat(greynodeIndex(dataIndex),greynodeIndex(dataIndex),:) = permute(voxdata, [2 3 1]);
       source.dimord = 'chan_chan_time';
+      case 'freq_pos'
+      Nfreq = size(voxdata,1);
+      dat = nan(Ngreynodes,Nfreq);
+      dat(greynodeIndex(dataIndex),:) = transpose(voxdata);
+      source.dimord = 'pos_freq';
+    case 'freq_chan'
+      Nfreq = size(voxdata,1);
+      dat = nan(Ngreynodes,Nfreq);
+      dat(greynodeIndex(dataIndex),:) = transpose(voxdata);
+      source.dimord = 'chan_freq';
+    case 'freq_pos_pos'
+      Nfreq = size(voxdata,1);
+      dat = nan(Ngreynodes,Ngreynodes,Nfreq);
+      dat(greynodeIndex(dataIndex),greynodeIndex(dataIndex),:) = permute(voxdata, [2 3 1]);
+      source.dimord = 'pos_pos_freq';
+    case 'freq_chan_chan'
+      Nfreq = size(voxdata,1);
+      dat = nan(Ngreynodes,Ngreynodes,Nfreq);
+      dat(greynodeIndex(dataIndex),greynodeIndex(dataIndex),:) = permute(voxdata, [2 3 1]);
+      source.dimord = 'chan_chan_freq';
+      
       
     otherwise
-      error('unsupported dimord %s', source.dimord);
+      ft_error('unsupported dimord %s', source.dimord);
   end % switch
   
-  if isfield(Cifti, 'mapname') && (length(Cifti.mapname)>1 || isfield(Cifti, 'labeltable'))
-    % use distict names if there are multiple scalars or labels
-    for i=1:length(Cifti.mapname)
-      fieldname = fixname(Cifti.mapname{i});
-      
-      % truncate the string if it's too long: MATLAB maximizes the string
-      % length to 63 characters (and throws a warning when truncating), 
-      % anticipating a possible presence of the labeltable it will be 
-      % truncated here to 58
-      if numel(fieldname)>58
-        warning_once(sprintf('%s exceeds MATLAB''s maximum name length of 63 characters and has been truncated to %s',fieldname,fieldname(1:58)));
-        fieldname = fieldname(1:58);
-      end
-      source.(fieldname) = dat(:,i);
-      if isfield(Cifti, 'labeltable')
-        source.([fieldname 'label']) = Cifti.labeltable{i};
-      end
+  if isfield(Cifti, 'mapname') && isfield(Cifti, 'labeltable') && strcmp(mapname, 'array')
+    allthesame = true;
+    for i=2:length(Cifti.labeltable)
+      allthesame = allthesame && isequal(Cifti.labeltable{1}, Cifti.labeltable{i});
     end
+    if allthesame
+      ft_warning('using the same labels for all maps in the array');
+      source.datalabel = Cifti.labeltable{1};
+      Cifti = rmfield(Cifti, 'labeltable');
+    else
+      ft_error('multiple maps cannot be represented as array in the presence of different labeltables');
+    end
+  end
+  
+  if isfield(Cifti, 'mapname') && (length(Cifti.mapname)>1 || isfield(Cifti, 'labeltable'))
+    switch mapname
+      case 'field'
+        % use distict names if there are multiple scalars or labels
+        for i=1:length(Cifti.mapname)
+          fieldname = Cifti.mapname{i};
+          if isfield(Cifti, 'labeltable')
+            if length(fieldname)>58
+              % truncate it, needed to be able to append 'label' to the end
+              fieldname = fieldname(1:58);
+            end
+            % append 'label' to the end
+            source.([fieldname 'label']) = Cifti.labeltable{i}(:);
+          end
+          if isfield(Cifti, 'rgba')
+            source.([fieldname 'rgba']) = Cifti.rgba{i};
+          end
+          source.(fieldname) = dat(:,i);
+        end
+      case 'array'
+        source.mapname = {NamedMap.MapName}; % keep the original names, not the field names
+        source.data    = dat;
+        source.dimord  = [source.dimord '_mapname'];
+      otherwise
+        ft_error('incorrect specification of mapname "%s"', mapname);
+    end % switch mapname
   else
     % the name of the data will be based on the filename
     source.data = dat;
@@ -763,37 +846,40 @@ source.unit = 'mm'; % per definition
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % try to get the geometrical information from the corresponding gifti files
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% use the filename prior to decompression
+filename = origfile;
+
+[p, f, x] = fileparts(filename);
+t = tokenize(f, '.');
+
+subject  = 'unknown';
+dataname = 'unknown';
+geomodel = '';
+
+% the following assumes HCP/WorkBench/Caret file naming conventions
+if length(t)==2
+  subject  = t{1};
+  dataname = t{2};
+elseif length(t)==3
+  subject  = t{1};
+  dataname = t{2};
+  content  = t{3};
+elseif length(t)==4
+  subject  = t{1};
+  dataname = t{2};
+  geomodel = t{3};
+  content  = t{4};
+elseif length(t)==5
+  subject  = t{1};
+  dataname = [t{2} '.' t{3}];
+  geomodel = t{4};
+  content  = t{5};
+else
+  ft_warning('cannot parse file name');
+end
+
 if readsurface
-  
-  [p, f, x] = fileparts(filename);
-  t = tokenize(f, '.');
-  
-  subject  = 'unknown';
-  dataname = 'unknown';
-  geomodel = '';
-  
-  % the following assumes HCP/WorkBench/Caret file naming conventions
-  if length(t)==2
-    subject  = t{1};
-    dataname = t{2};
-  elseif length(t)==3
-    subject  = t{1};
-    dataname = t{2};
-    content  = t{3};
-  elseif length(t)==4
-    subject  = t{1};
-    dataname = t{2};
-    geomodel = t{3};
-    content  = t{4};
-  elseif length(t)==5
-    subject  = t{1};
-    dataname = [t{2} '.' t{3}];
-    geomodel = t{4};
-    content  = t{5};
-  else
-    error('cannot parse file name');
-  end
-  
   % construct a list of possible file names for the surface geometry
   Lfilelist = {
     [subject '.L' '.midthickness'  '.' geomodel '.surf.gii']
@@ -872,8 +958,8 @@ if readsurface
           if exist(Lfilelist{j}, 'file')
             fprintf('reading CORTEX_LEFT surface from %s\n', Lfilelist{j});
             mesh = ft_read_headshape(Lfilelist{j}, 'unit', 'mm'); % volume and surface should be in consistent units, gifti is defined in mm, wb_view also expects mm
-            mesh.pnt(:,1) = mesh.pnt(:,1) - hemisphereoffset;
-            pos(posIndex==i,:) = mesh.pnt;
+            mesh.pos(:,1) = mesh.pos(:,1) - hemisphereoffset;
+            pos(posIndex==i,:) = mesh.pos;
             tri = cat(1, tri, mesh.tri + find(posIndex==i, 1, 'first') - 1);
             break
           end
@@ -884,8 +970,8 @@ if readsurface
           if exist(Rfilelist{j}, 'file')
             fprintf('reading CORTEX_RIGHT surface from %s\n', Rfilelist{j});
             mesh = ft_read_headshape(Rfilelist{j}, 'unit', 'mm'); % volume and surface should be in consistent units, gifti is defined in mm, wb_view also expects mm
-            mesh.pnt(:,1) = mesh.pnt(:,1) + hemisphereoffset;
-            pos(posIndex==i,:) = mesh.pnt;
+            mesh.pos(:,1) = mesh.pos(:,1) + hemisphereoffset;
+            pos(posIndex==i,:) = mesh.pos;
             tri = cat(1, tri, mesh.tri + find(posIndex==i, 1, 'first') - 1);
             break
           end
@@ -896,7 +982,7 @@ if readsurface
           if exist(Bfilelist{j}, 'file')
             fprintf('reading %s surface from %s\n', Surface(i).BrainStructure(17:end), Bfilelist{j});
             mesh = ft_read_headshape(Bfilelist{j}, 'unit', 'mm'); % volume and surface should be in consistent units, gifti is defined in mm, wb_view also expects mm
-            pos(posIndex==i,:) = mesh.pnt;
+            pos(posIndex==i,:) = mesh.pos;
             tri = cat(1, tri, mesh.tri + find(posIndex==i, 1, 'first') - 1);
             break
           end
@@ -904,6 +990,8 @@ if readsurface
         
     end % switch BrainStructure
   end
+else
+  tri = [];
 end % if readsurface
 
 % add the vertex and voxel positions
@@ -953,7 +1041,6 @@ if readdata
 %       source.data = tempdata;
 %     end
 %     source = rmfield(source, 'data');
-%     
   end
   
   % rename the datalabel field

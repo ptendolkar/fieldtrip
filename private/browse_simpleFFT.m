@@ -36,7 +36,7 @@ button_chansel = uicontrol('tag', 'chansel', 'parent', ffth, 'units', 'normalize
 % put dat in fig (sparse)
 fftopt = [];
 fftopt.freqdata = freqdata;
-fftopt.chancolors = cfg.chancolors;
+fftopt.linecolor = cfg.linecolor;
 fftopt.chansel = 1:numel(data.label);
 fftopt.semilogx = true;
 fftopt.semilogy = true;
@@ -76,7 +76,7 @@ chansel = select_channel_list(fftopt.freqdata.label, fftopt.chansel, 'select cha
 % output data
 fftopt.chansel = chansel;
 setappdata(ffth, 'fftopt', fftopt);
-draw_simple_fft_cb(fftopt.butth)
+draw_simple_fft_cb(h)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % SUBFUNCTION
@@ -100,15 +100,14 @@ else
   dat = fftopt.freqdata.powspctrm;
 end
 
-
 % select data and chanel colors
-chancolors = fftopt.chancolors(fftopt.chansel, :);
+linecolor = fftopt.linecolor(fftopt.chansel, :);
 dat = dat(fftopt.chansel, :);
 
 % plot using specified colors
 set(0, 'currentFigure', ffth)
 for ichan = 1:size(dat, 1)
-  color = chancolors(ichan, :);
+  color = linecolor(ichan, :);
   ft_plot_vector(freq, dat(ichan, :), 'box', false, 'color', color)
 end
 

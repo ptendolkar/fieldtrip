@@ -1,10 +1,8 @@
 function test_ft_megrealign
 
-% MEM 1500mb
+% MEM 2gb
 % WALLTIME 00:10:00
-
-% TEST test_ft_megrealign
-% TEST ft_megrealign ft_prepare_neighbours ft_transform_geometry
+% DEPENDENCY ft_megrealign ft_prepare_neighbours ft_transform_geometry
 
 datainfo = ref_datasets;
 sel      = match_str({datainfo.datatype},{'bti148' 'bti248' 'ctf151' 'ctf275' 'itab153' 'yokogawa160'}');
@@ -27,7 +25,6 @@ for k = 1:numel(datainfo)
   vol.unit = 'cm';
   
   % ensure units in the gradiometer array and volume conductor to be equal
-  data.grad = ft_convert_units(data.grad);
   data.grad = ft_convert_units(data.grad, 'cm');
   vol       = ft_convert_units(vol, data.grad.unit);
   
@@ -43,7 +40,7 @@ for k = 1:numel(datainfo)
   cfg.template{2} = data2.grad;
   cfg.template{3} = data3.grad;
   cfg.inwardshift = 1;
-  cfg.vol         = vol;
+  cfg.headmodel   = vol;
   
   interp = ft_megrealign(cfg, data);
   interp2 = ft_megrealign(cfg, data2);

@@ -26,7 +26,7 @@ function ft_realtime_modeegproxy(cfg)
 
 % Copyright (C) 2012, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -58,7 +58,7 @@ if ~isfield(cfg.target, 'dataformat'),  cfg.target.dataformat = [];             
 % make a connection to the serial port
 fid = fopen(cfg.filename, 'r');
 if fid<0
-  error('cannot open %s', cfg.filename);
+  ft_error('cannot open %s', cfg.filename);
 else
   fprintf('opened %s\n', cfg.filename);
   c = onCleanup(@()fclose(fid));

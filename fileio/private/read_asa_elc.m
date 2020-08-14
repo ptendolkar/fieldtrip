@@ -5,7 +5,7 @@ function elec = read_asa_elc(fn)
 
 % Copyright (C) 2002-2013, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -45,13 +45,13 @@ elseif strcmpi(Unit,'cm')
 elseif strcmpi(Unit,'m')
   pnt = 1000*pnt;
 elseif ~isempty(Unit)
-  error('Unknown unit of distance for electrodes (%s)', Unit);
+  ft_error('Unknown unit of distance for electrodes (%s)', Unit);
 end
 
 tmp = tokenize(lab{1});
 if length(tmp)==size(pnt,1)
   % the electrode labels were on a single line
-  % reformat the electrode labels into an appropriately sized cell array
+  % reformat the electrode labels into an appropriately sized cell-array
   lab = tmp;
 end
 

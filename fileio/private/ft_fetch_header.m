@@ -1,16 +1,16 @@
 function [hdr] = ft_fetch_header(data)
 
-% FT_FETCH_HEADER mimics the behaviour of FT_READ_HEADER, but for a FieldTrip
+% FT_FETCH_HEADER mimics the behavior of FT_READ_HEADER, but for a FieldTrip
 % raw data structure instead of a file on disk.
 %
 % Use as
-%   [hdr] = ft_fetch_header(data)
+%   hdr = ft_fetch_header(data)
 %
 % See also FT_READ_HEADER, FT_FETCH_DATA, FT_FETCH_EVENT
 
 % Copyright (C) 2008, Esther Meeuwissen
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -44,14 +44,28 @@ else
   trl = [1 sum(trllen)];
 end
 
-% fill in hdr.nChans 
-hdr.nChans = length(data.label);
+% fill in some header details
+hdr.Fs     = data.fsample;
+hdr.label  = data.label(:);
+hdr.nChans = numel(data.label);
 
-% fill in hdr.label 
-hdr.label = data.label;
+% fill in the channel type and units
+if isfield(data, 'hdr')
+  % keep them ordered according to the FieldTrip data structure, which might differ from the original header
+  [datindx, hdrindx] = match_str(data.label, data.hdr.label);
+  hdr.chantype = repmat({'unknown'}, hdr.nChans, 1);
+  if isfield(data.hdr, 'chantype')
+    hdr.chantype(datindx) = data.hdr.chantype(hdrindx);
+  end
+  hdr.chanunit = repmat({'unknown'}, hdr.nChans, 1);
+  if isfield(data.hdr, 'chanunit')
+    hdr.chanunit(datindx) = data.hdr.chanunit(hdrindx);
+  end
+end
 
-% fill in hdr.Fs (sample frequency)
-hdr.Fs = data.fsample;
+% try to determine them on the basis of heuristics, when already present they will stay the same
+hdr.chantype = ft_chantype(hdr);
+hdr.chanunit = ft_chanunit(hdr);
 
 % determine hdr.nSamples, hdr.nSamplesPre, hdr.nTrials
 % always pretend that it is continuous data
@@ -59,15 +73,27 @@ hdr.nSamples    = max(trl(:,2));
 hdr.nSamplesPre = 0;
 hdr.nTrials     = 1;
 
-% retrieve the gradiometer and/or electrode information
+% retrieve the gradiometer and/or electrode and/or optode information
 if isfield(data, 'grad')
-  hdr.grad = data.grad;  
+  hdr.grad = data.grad;
 elseif isfield(data, 'hdr') && isfield(data.hdr, 'grad')
-  hdr.grad = data.hdr.grad;  
+  hdr.grad = data.hdr.grad;
 end
 if isfield(data, 'elec')
   hdr.elec = data.elec;
 elseif isfield(data, 'hdr') && isfield(data.hdr, 'elec')
-  hdr.elec = data.hdr.elec;  
+  hdr.elec = data.hdr.elec;
 end
-    
+if isfield(data, 'opto')
+  hdr.opto = data.opto;
+elseif isfield(data, 'hdr') && isfield(data.hdr, 'opto')
+  hdr.opto = data.hdr.opto;
+end
+
+% retrieve the synchronization information
+if isfield(data, 'hdr') && isfield(data.hdr, 'FirstTimeStamp')
+  hdr.FirstTimeStamp = data.hdr.FirstTimeStamp;
+end
+if isfield(data, 'hdr') && isfield(data.hdr, 'TimeStampPerSample')
+  hdr.TimeStampPerSample = data.hdr.TimeStampPerSample;
+end

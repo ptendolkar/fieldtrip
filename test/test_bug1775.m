@@ -2,14 +2,10 @@ function test_bug1775
 
 % MEM 2gb
 % WALLTIME 00:10:00
-
-% TEST test_bug1775
-% TEST ft_sourceparcellate ft_checkdata ft_datatype_source ft_datatype_volume ft_datatype_parcellation ft_datatype_segmentation
+% DEPENDENCY ft_sourceparcellate ft_checkdata ft_datatype_source ft_datatype_volume ft_datatype_parcellation ft_datatype_segmentation
 
 %% create a set of sensors
-
-[pnt, tri] = icosahedron162;
-
+[pnt, tri] = mesh_sphere(162);
 pnt = pnt .* 10; % convert to cm
 sel = find(pnt(:,3)>0);
 
@@ -21,7 +17,7 @@ for i=1:length(sel)
   grad.label{i} = sprintf('magnetometer%d', i);
 end
 grad.unit = 'cm';
-grad.type = 'magnetometer';
+grad.type = 'meg';
 
 grad = ft_datatype_sens(grad);
 
@@ -38,8 +34,8 @@ vol = ft_datatype_headmodel(vol);
 
 cfg = [];
 cfg.grad            = grad;
-cfg.vol             = vol;
-cfg.grid.resolution = 1;
+cfg.headmodel       = vol;
+cfg.resolution      = 2; % cm
 cfg.channel         = 'all';
 grid = ft_prepare_leadfield(cfg);
 
@@ -59,8 +55,8 @@ parcellation.cfg = 'manual'; % to check whether the provenance is correct
 
 %% create simulated data
 cfg = [];
-cfg.grad    = grad;
-cfg.vol     = vol;
+cfg.grad = grad;
+cfg.headmodel = vol;
 cfg.dip.pos = [0 0 4];
 data = ft_dipolesimulation(cfg);
 
@@ -79,18 +75,18 @@ cfg.toi     = data.time{1};
 freq2 = ft_freqanalysis(cfg, data);
 
 cfg = [];
-cfg.grad    = grad;
-cfg.vol     = vol;
-cfg.grid    = grid;
-cfg.method  = 'lcmv';
+cfg.grad        = grad;
+cfg.headmodel   = vol;
+cfg.sourcemodel = grid;
+cfg.method      = 'lcmv';
 source1 = ft_sourceanalysis(cfg, timelock);
 
 cfg = [];
-cfg.grad    = grad;
-cfg.vol     = vol;
-cfg.grid    = grid;
-cfg.method  = 'mne';
-cfg.mne.lambda = 0;
+cfg.grad        = grad;
+cfg.headmodel   = vol;
+cfg.sourcemodel = grid;
+cfg.method      = 'mne';
+cfg.mne.lambda  = 0;
 source2 = ft_sourceanalysis(cfg, timelock);
 
 %% make some parcellations
@@ -100,6 +96,7 @@ source1p = ft_sourceparcellate(cfg, source1, parcellation);
 source2p = ft_sourceparcellate(cfg, source2, parcellation);
 
 %% construct a more complex source structure
+% note that this increases memory requirements
 source3 = [];
 source3.pos       = source2.pos;
 source3.freq      = 1:5;
@@ -110,6 +107,7 @@ cfg = [];
 source3p = ft_sourceparcellate(cfg, source3, parcellation);
 
 %%
+% this increases memory requirements even more
 source4 = [];
 source4.pos       = source2.pos;
 source4.freq      = 1:5;
@@ -158,4 +156,3 @@ cfg.method = 'max';
 source6p = ft_sourceparcellate(cfg, source6, parcellation);
 cfg.method = 'eig';
 source6p = ft_sourceparcellate(cfg, source6, parcellation);
-

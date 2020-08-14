@@ -1,6 +1,10 @@
 function inspect_historical
 
-% this function creates the datafiles for the historical fieldtrip versions
+% WALLTIME 00:10:00
+% MEM 1gb
+% DEPENDENCY
+
+% this function creates the datafiles for the historical FieldTrip versions
 % it should not run unattended
 return
 
@@ -35,7 +39,7 @@ for i=1:length(version)
   clear functions
   clear global
   
-  addpath(sprintf('/home/common/matlab/fieldtrip-%s', version{i}));
+  addpath(sprintf(dccnpath('/home/common/matlab/fieldtrip-%s', version{i})));
   
   % beware of using an incorrect ft_defaults or fieldtripdefs
   if exist('ft_defaults.m', 'file')

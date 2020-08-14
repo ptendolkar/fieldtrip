@@ -14,11 +14,11 @@
 %   .... regular code goes here ...
 %   ft_postamble randomseed
 %
-% See also FT_POSTAMBLE_RANDOMSEED
+% See also FT_PREAMBLE, FT_POSTAMBLE, FT_POSTAMBLE_RANDOMSEED
 
 % Copyright (C) 2011-2012, Robert Oostenveld, DCCN
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify

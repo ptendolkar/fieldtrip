@@ -9,7 +9,7 @@ function dat = read_deymed_dat(filename, hdr, begsample, endsample)
 
 % Copyright (C) 2013, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -47,7 +47,7 @@ if nargin<4 || isempty(endsample)
   endsample = hdr.nSamples;
 end
 
-fid = fopen(datafile, 'rb', 'ieee-le');
+fid = fopen_or_error(datafile, 'rb', 'ieee-le');
 offset = 512;                                 % for the general header
 offset = offset + hdr.nChans*1024;            % for the channel headers
 offset = offset + (begsample-1)*2*hdr.nChans; % for the begin sample

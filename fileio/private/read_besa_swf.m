@@ -6,7 +6,7 @@ function [swf] = read_besa_swf(filename)
 %   [swf] = read_besa_swf(filename)
 %
 % This will return a structure with the header information in
-%   swf.label     cell array with labels
+%   swf.label     cell-array with labels
 %   swf.data      data matrix, Nchan X Npnts
 %   swf.npnt
 %   swf.tsb
@@ -15,7 +15,7 @@ function [swf] = read_besa_swf(filename)
 
 % Copyright (C) 2006, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify

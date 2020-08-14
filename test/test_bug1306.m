@@ -1,13 +1,11 @@
 function test_bug1306b
 
-% MEM 1500mb
+% MEM 2gb
 % WALLTIME 00:10:00
+% DEPENDENCY ft_preprocessing ref_datasets ft_timelockanalysis
 
 % Use function signature below for testing --- note that xUnit does not seem to support it.
 %function datanew = test_ft_preprocessing(datainfo, writeflag, version)
-
-% TEST test_ft_preprocessing
-% TEST ft_preprocessing ref_datasets
 
 % writeflag determines whether the output should be saved to disk
 % version determines the output directory
@@ -92,7 +90,7 @@ cfg.trl   = cfg.trl(sel,:);
 cfg.continuous = 'yes';
 data           = ft_preprocessing(cfg);
 if ~strcmp(version, 'latest') && str2num(version)<20100000
-  % -- HISTORICAL --- older fieldtrip versions don't support outputfile
+  % -- HISTORICAL --- older FieldTrip versions don't support outputfile
   save(cfg.outputfile, 'data');
 end
 

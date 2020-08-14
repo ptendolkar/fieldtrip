@@ -13,7 +13,7 @@ function [el, prj] = project_elec(elc, pnt, tri)
 
 % Copyright (C) 1999-2013, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -34,7 +34,7 @@ function [el, prj] = project_elec(elc, pnt, tri)
 Nelc = size(elc,1);
 el   = zeros(Nelc, 4);
 
-% this is a work-around for http://bugzilla.fcdonders.nl/show_bug.cgi?id=2369
+% this is a work-around for http://bugzilla.fieldtriptoolbox.org/show_bug.cgi?id=2369
 elc = double(elc);
 pnt = double(pnt);
 tri = double(tri);

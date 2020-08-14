@@ -1,7 +1,8 @@
 function test_printstruct
 
-% MEM 4096mb
+% MEM 4gb
 % WALLTIME 00:20:00
+% DEPENDENCY
 
 % the above requirements are quite big, but this script is inherently
 % unpredictable
@@ -25,7 +26,7 @@ for k = 1:numtests
   % check equality
   % use abstol here because we know all floating point numeric values are
   % generated from standard normal distribution
-  [ok,msg] = identical(mystruct, newstruct, 'abstol', 1e-6);
+  [ok,msg] = isalmostequal(mystruct, newstruct, 'abstol', 1e-6);
   if ok
     fprintf('printstruct() behaves as expected for random structure %d\n', k);
   else

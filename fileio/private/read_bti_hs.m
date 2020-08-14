@@ -1,4 +1,4 @@
-function [output, firstIndexPoint] = read_4d_hs( filename, outfile)
+function [output, firstIndexPoint] = read_bti_hs( filename, outfile)
 
 %read_hs_file Reads in BTI-Headshape files
 %   filename: file with the headshape informations
@@ -7,7 +7,7 @@ function [output, firstIndexPoint] = read_4d_hs( filename, outfile)
 %
 %   (C) 2007 by Thomas Hartmann
 
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -29,7 +29,7 @@ if nargin == 1
     outfile = [];
 end %if
 
-fid       = fopen(filename, 'r', 'b');
+fid       = fopen_or_error(filename, 'r', 'b');
 version   = fread(fid, 1, '*uint32');
 timestamp = fread(fid, 1, '*int32');
 checksum  = fread(fid, 1, '*int32');
@@ -46,7 +46,7 @@ if(nargout > 0)
 end %if
 
 if(nargin == 2)
-    fid = fopen(outfile, 'wt');
+    fid = fopen_or_error(outfile, 'wt');
     fprintf(fid, '%d\n', nPoints);
     for i = 1:size(points, 2)
         fprintf(fid, '%.3f\t%.3f\t%.3f\n', points(1, i), points(2, i), points(3, i));

@@ -40,7 +40,7 @@ function [stat, cfg] = ft_statistics_analytic(cfg, dat, design)
 
 % Copyright (C) 2006-2015, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -58,6 +58,10 @@ function [stat, cfg] = ft_statistics_analytic(cfg, dat, design)
 %
 % $Id$
 
+% do a sanity check on the input data
+assert(isnumeric(dat),    'this function requires numeric data as input, you probably want to use FT_TIMELOCKSTATISTICS, FT_FREQSTATISTICS or FT_SOURCESTATISTICS instead');
+assert(isnumeric(design), 'this function requires numeric data as input, you probably want to use FT_TIMELOCKSTATISTICS, FT_FREQSTATISTICS or FT_SOURCESTATISTICS instead');
+
 % check if the input cfg is valid for this function
 cfg = ft_checkconfig(cfg, 'renamedval',  {'correctm', 'bonferoni', 'bonferroni'});
 cfg = ft_checkconfig(cfg, 'renamedval',  {'correctm', 'holms', 'holm'});
@@ -73,9 +77,9 @@ cfg.tail     = ft_getopt(cfg, 'tail', 0);
 % fetch function handle to the low-level statistics function
 statfun = ft_getuserfun(cfg.statistic, 'statfun');
 if isempty(statfun)
-  error('could not locate the appropriate statistics function');
+  ft_error('could not locate the appropriate statistics function');
 else
-  fprintf('using "%s" for the single-sample statistics\n', func2str(statfun));
+  ft_info('using "%s" for the single-sample statistics\n', func2str(statfun));
 end
 
 % tell the low-level statfun to compute the statistic, critical values, and the probability
@@ -94,17 +98,17 @@ cfg = rmfield(cfg, 'computeprob');
 cfg = rmfield(cfg, 'computecritval');
 
 if ~isfield(stat, 'prob')
-  warning('probability was not computed');
+  ft_warning('probability was not computed');
 else
   switch lower(cfg.correctm)
     case 'bonferroni'
-      fprintf('performing Bonferoni correction for multiple comparisons\n');
-      fprintf('the returned probabilities are uncorrected, the thresholded mask is corrected\n');
+      ft_notice('performing Bonferoni correction for multiple comparisons\n');
+      ft_notice('the returned probabilities are uncorrected, the thresholded mask is corrected\n');
       stat.mask = stat.prob<=(cfg.alpha ./ numel(stat.prob));
     case 'holm'
       % test the most significatt significance probability against alpha/N, the second largest against alpha/(N-1), etc.
-      fprintf('performing Holm-Bonferroni correction for multiple comparisons\n');
-      fprintf('the returned probabilities are uncorrected, the thresholded mask is corrected\n');
+      ft_notice('performing Holm-Bonferroni correction for multiple comparisons\n');
+      ft_notice('the returned probabilities are uncorrected, the thresholded mask is corrected\n');
       [pvals, indx] = sort(stat.prob(:));                                   % this sorts the significance probabilities from smallest to largest
       k = find(pvals > (cfg.alpha ./ ((length(pvals):-1:1)')), 1, 'first'); % compare each significance probability against its individual threshold
       mask = (1:length(pvals))'<k;
@@ -112,21 +116,21 @@ else
       stat.mask(indx) = mask;
     case 'hochberg'
       % test the most significant significance probability against alpha/N, the second largest against alpha/(N-1), etc.
-      fprintf('performing Hochberg''s correction for multiple comparisons (this is *not* the Benjamini-Hochberg FDR procedure!)\n');
-      fprintf('the returned probabilities are uncorrected, the thresholded mask is corrected\n');
+      ft_notice('performing Hochberg''s correction for multiple comparisons (this is *not* the Benjamini-Hochberg FDR procedure!)\n');
+      ft_notice('the returned probabilities are uncorrected, the thresholded mask is corrected\n');
       [pvals, indx] = sort(stat.prob(:));                                   % this sorts the significance probabilities from smallest to largest
       k = find(pvals <= (cfg.alpha ./ ((length(pvals):-1:1)')), 1, 'last'); % compare each significance probability against its individual threshold
       mask = (1:length(pvals))'<=k;
       stat.mask = zeros(size(stat.prob));
       stat.mask(indx) = mask;
     case 'fdr'
-      fprintf('performing FDR correction for multiple comparisons\n');
-      fprintf('the returned probabilities are uncorrected, the thresholded mask is corrected\n');
+      ft_notice('performing FDR correction for multiple comparisons\n');
+      ft_notice('the returned probabilities are uncorrected, the thresholded mask is corrected\n');
       stat.mask = fdr(stat.prob, cfg.alpha);
     case 'no'
-      fprintf('not performing a correction for multiple comparisons\n');
+      ft_notice('not performing a correction for multiple comparisons\n');
       stat.mask = stat.prob<=cfg.alpha;
     otherwise
-      error('unsupported option "%s" for cfg.correctm', cfg.correctm);
+      ft_error('unsupported option "%s" for cfg.correctm', cfg.correctm);
   end
 end

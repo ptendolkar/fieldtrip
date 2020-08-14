@@ -1,4 +1,4 @@
-function varargout = ft_wizard(wizard_filename)
+function [varargout] = ft_wizard(wizard_filename)
 
 % FT_WIZARD is a graphical user interface to evaluate a FieldTrip analysis
 % script one step at a time, allowing you to go to the next step if you are
@@ -29,7 +29,7 @@ function varargout = ft_wizard(wizard_filename)
 
 % Copyright (C) 2007-2010, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify

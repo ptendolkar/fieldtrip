@@ -7,7 +7,7 @@
 % Copyright (C) 2010, Stefan Klanke,
 % 	Modified by Tim van Mourik, 2014
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -41,6 +41,16 @@ end
 
 %% Test
 %  This file contains an example string that will be parsed by sap2matlab
-load('mrprotString.mat');
+load('mrprotString.mat', 'apstr');
 S = sap2matlab(apstr);
+
+
+%%
+file = '../Projects/TestReadMrprot/mrprot_triotim.txt';
+f = fopen(file, 'r');
+textData = fread(f);
+fclose(f);
+
+S = sap2matlab(sprintf('%s', textData));
+
 

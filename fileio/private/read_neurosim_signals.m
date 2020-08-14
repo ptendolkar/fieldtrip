@@ -7,7 +7,7 @@ function [hdr, dat] = read_neurosim_signals(filename)
 
 % Copyright (C) 2012 Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -25,7 +25,7 @@ function [hdr, dat] = read_neurosim_signals(filename)
 %
 % $Id$
 
-if isdir(filename)
+if isfolder(filename)
   filename = fullfile(filename, 'signals');
 end
 
@@ -34,7 +34,7 @@ hdr             = [];
 label = {};
 orig  = {};
 
-fid = fopen(filename, 'rb');
+fid = fopen_or_error(filename, 'rb');
 
 % read the header
 line =  '#';
@@ -81,7 +81,7 @@ end
 
 fclose(fid);
 
-% convert the header into fieldtrip style
+% convert the header into FieldTrip style
 hdr.label       = label(:);
 hdr.nChans      = length(label);
 % represent it as a single continuous recording

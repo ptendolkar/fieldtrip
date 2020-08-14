@@ -25,7 +25,7 @@ function ft_realtime_neuralynxproxy(cfg)
 
 % Copyright (C) 2008, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -95,7 +95,7 @@ for index = 1:length(cheetahObjects)
     fprintf('FAILED to open stream for %s', char(cheetahObjects(index)));
     break;
   end
-end;
+end
 if succeeded == 1
   disp 'PASSED open stream for all current objects'
 end
@@ -186,7 +186,7 @@ while again
 
       selectValid = (numValidSamplesArray==512);
       if ~all(selectValid)
-        warning('some samples were not valid')
+        ft_warning('some samples were not valid')
       end
 
       % remove the records that are somehow corrupted
@@ -204,7 +204,7 @@ while again
   end % for objectIndex
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  % create a fieldtrip compatible header structure
+  % create a FieldTrip compatible header structure
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   if isempty(hdr) && ~isempty(objectData) && ~isempty(objectData(1))
     hdr.Fs                 = objectData(1).samplingFreqArray(1);  % sampling frequency

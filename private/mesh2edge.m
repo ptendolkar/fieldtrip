@@ -1,14 +1,18 @@
-function [newbnd] = mesh2edge(bnd)
+function [output] = mesh2edge(mesh)
 
-% MESH2EDGE finds the edge lines from a triangulated mesh or the edge surfaces
-% from a tetrahedral or hexahedral mesh.
+% MESH2EDGE finds the edge lines from a triangulated mesh or the edge
+% surfaces from a tetrahedral or hexahedral mesh. An edge is defined as an
+% element that does not border any other element. This also implies that a
+% closed triangulated surface has no edges.
 %
 % Use as
-%   [bnd] = mesh2edge(bnd)
-
-% Copyright (C) 2013, Robert Oostenveld
+%   [edge] = mesh2edge(mesh)
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% See also POLY2TRI
+
+% Copyright (C) 2013-2020, Robert Oostenveld
+%
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -26,33 +30,33 @@ function [newbnd] = mesh2edge(bnd)
 %
 % $Id$
 
-if isfield(bnd, 'tri')
+if isfield(mesh, 'tri')
   % make a list of all edges
-  edge1 = bnd.tri(:, [1 2]);
-  edge2 = bnd.tri(:, [2 3]);
-  edge3 = bnd.tri(:, [3 1]);
+  edge1 = mesh.tri(:, [1 2]);
+  edge2 = mesh.tri(:, [2 3]);
+  edge3 = mesh.tri(:, [3 1]);
   edge = cat(1, edge1, edge2, edge3);
   
-elseif isfield(bnd, 'tet')
+elseif isfield(mesh, 'tet')
   % make a list of all triangles that form the tetraheder
-  tri1 = bnd.tet(:, [1 2 3]);
-  tri2 = bnd.tet(:, [2 3 4]);
-  tri3 = bnd.tet(:, [3 4 1]);
-  tri4 = bnd.tet(:, [4 1 2]);
+  tri1 = mesh.tet(:, [1 2 3]);
+  tri2 = mesh.tet(:, [2 3 4]);
+  tri3 = mesh.tet(:, [3 4 1]);
+  tri4 = mesh.tet(:, [4 1 2]);
   edge = cat(1, tri1, tri2, tri3, tri4);
   
-elseif isfield(bnd, 'hex')
+elseif isfield(mesh, 'hex')
   % make a list of all "squares" that form the cube/hexaheder
   % FIXME should be checked, this is impossible without a drawing
-  square1 = bnd.hex(:, [1 2 3 4]);
-  square2 = bnd.hex(:, [5 6 7 8]);
-  square3 = bnd.hex(:, [1 2 6 5]);
-  square4 = bnd.hex(:, [2 3 7 6]);
-  square5 = bnd.hex(:, [3 4 8 7]);
-  square6 = bnd.hex(:, [4 1 5 8]);
+  square1 = mesh.hex(:, [1 2 3 4]);
+  square2 = mesh.hex(:, [5 6 7 8]);
+  square3 = mesh.hex(:, [1 2 6 5]);
+  square4 = mesh.hex(:, [2 3 7 6]);
+  square5 = mesh.hex(:, [3 4 8 7]);
+  square6 = mesh.hex(:, [4 1 5 8]);
   edge = cat(1, square1, square2, square3, square4, square5, square6);
   
-end % isfield(bnd)
+end % isfield(mesh)
 
 % soort all polygons in the same direction
 % keep the original as "edge" and the sorted one as "sedge"
@@ -78,18 +82,24 @@ sedge = sort(edge, 2);
 indx = findsingleoccurringrows(sedge);
 edge = edge(indx, :);
 
-% the naming of the output edges depends on what they represent
-newbnd.pnt  = bnd.pnt;  
-if isfield(bnd, 'tri')
-  newbnd.line = edge;
-elseif isfield(bnd, 'tet')
-  newbnd.tri = edge;
-elseif isfield(bnd, 'hex')
-  newbnd.poly = edge;
+% replace pnt by pos
+mesh = fixpos(mesh);
+
+% the naming of the edges in the output depends on what they represent
+output.pos = mesh.pos;
+if isfield(mesh, 'tri')
+  % these have two vertices in each edge element
+  output.line = edge;
+elseif isfield(mesh, 'tet')
+  % these have three vertices in each edge element
+  output.tri = edge;
+elseif isfield(mesh, 'hex')
+  % these have four vertices in each edge element
+  output.poly = edge;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% SUBFUNCTION, see http://bugzilla.fcdonders.nl/show_bug.cgi?id=1833#c12
+% SUBFUNCTION, see http://bugzilla.fieldtriptoolbox.org/show_bug.cgi?id=1833#c12
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function indx = findsingleoccurringrows(X)
 [X, indx] = sortrows(X);

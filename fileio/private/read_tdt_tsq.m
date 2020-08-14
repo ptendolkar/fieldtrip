@@ -10,7 +10,7 @@ function tsq = read_tdt_tsq(filename, begblock, endblock)
 
 % Copyright (C) 2010, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -44,7 +44,7 @@ if nargin<3 || isempty(endblock)
   endblock = inf;
 end
 
-fid = fopen(filename, 'rb');
+fid = fopen_or_error(filename, 'rb');
 offset = (begblock-1)*40; % bytes
 fseek(fid, offset, 'cof');
 buf = fread(fid, [40, (endblock-begblock+1)], 'uint8=>uint8');

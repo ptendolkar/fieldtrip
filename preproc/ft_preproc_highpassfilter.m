@@ -1,4 +1,4 @@
-function [filt] = ft_preproc_highpassfilter(dat,Fs,Fhp,N,type,dir,instabilityfix,df,wintype,dev,plotfiltresp,usefftfilt)
+function [filt, B, A] = ft_preproc_highpassfilter(dat,Fs,Fhp,N,type,dir,instabilityfix,df,wintype,dev,plotfiltresp,usefftfilt)
 
 % FT_PREPROC_HIGHPASSFILTER applies a high-pass filter to the data and thereby removes
 % the low frequency components in the data
@@ -24,6 +24,7 @@ function [filt] = ft_preproc_highpassfilter(dat,Fs,Fhp,N,type,dir,instabilityfix
 %                'twopass-reverse' zero-phase reverse and forward filter
 %                'twopass-average' average of the twopass and the twopass-reverse
 %                'onepass-zerophase' zero-phase forward filter with delay compensation (default for firws, linear-phase symmetric FIR only)
+%                'onepass-reverse-zerophase' zero-phase reverse filter with delay compensation
 %                'onepass-minphase' minimum-phase converted forward filter (non-linear!, firws only)
 %   instabilityfix optional method to deal with filter instabilities
 %                'no'       only detect and give error (default)
@@ -52,7 +53,7 @@ function [filt] = ft_preproc_highpassfilter(dat,Fs,Fhp,N,type,dir,instabilityfix
 
 % Copyright (c) 2003-2014, Robert Oostenveld, Arjen Stolk, Andreas Widmann
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -130,9 +131,13 @@ else
 end
 
 % Filtering does not work on integer data
-typ = class(dat);
-if ~strcmp(typ, 'double') && ~strcmp(typ, 'single')
+if ~isa(dat, 'double') && ~isa(dat, 'single')
   dat = cast(dat, 'double');
+end
+
+% preprocessing fails on channels that contain NaN
+if any(isnan(dat(:)))
+  ft_warning('FieldTrip:dataContainsNaN', 'data contains NaN values');
 end
 
 % Nyquist frequency
@@ -150,12 +155,12 @@ switch type
 
     % Input arguments
     if length(Fhp) ~= 1
-        error('One cutoff frequency required.')
+        ft_error('One cutoff frequency required.')
     end
 
     % Filter order AND transition width set?
     if ~isempty(N) && ~isempty(df)
-        warning('firws:dfOverridesN', 'Filter order AND transition width set - transition width setting will override filter order.')
+        ft_warning('firws:dfOverridesN', 'Filter order AND transition width set - transition width setting will override filter order.')
     elseif isempty(N) && isempty(df) % Default transition width heuristic
         df = fir_df(Fhp, Fs);
     end
@@ -165,14 +170,14 @@ switch type
     isOrderLow = false;
     if ~isempty(df)
       if df > maxDf
-        error('Transition band too wide. Maximum transition width is %.2f Hz.', maxDf)
+        ft_error('Transition band too wide. Maximum transition width is %.2f Hz.', maxDf)
       end
       [N, dev] = firwsord(wintype, Fs, df, dev);
     else % Check filter order otherwise
       [df, dev] = invfirwsord(wintype, Fs, N, dev);
       if df > maxDf
         nOpt = firwsord(wintype, Fs, maxDf, dev);
-        warning('firws:filterOrderLow', 'Filter order too low. For better results a minimum filter order of %d is recommended. Effective cutoff frequency might deviate from requested cutoff frequency.', nOpt)
+        ft_warning('firws:filterOrderLow', 'Filter order too low. For better results a minimum filter order of %d is recommended. Effective cutoff frequency might deviate from requested cutoff frequency.', nOpt)
         isOrderLow = true;
       end
     end
@@ -208,14 +213,15 @@ switch type
     end
     
     % Reporting
-    print_once(sprintf('Highpass filtering data: %s, order %d, %s-windowed sinc FIR\n', dir, order, wintype));
+    ft_info once
+    ft_info('Highpass filtering data: %s, order %d, %s-windowed sinc FIR\n', dir, order, wintype);
     if ~isTwopass && ~isOrderLow % Do not report shifted cutoffs
-      print_once(sprintf('  cutoff (-6 dB) %g Hz\n', Fhp));
+      ft_info('  cutoff (-6 dB) %g Hz\n', Fhp);
       tb = [max([Fhp - df / 2 0]), min([Fhp + df / 2 Fn])]; % Transition band edges
-      print_once(sprintf('  transition width %.1f Hz, stopband 0-%.1f Hz, passband %.1f-%.0f Hz\n', df, tb, Fn));
+      ft_info('  transition width %.1f Hz, stopband 0-%.1f Hz, passband %.1f-%.0f Hz\n', df, tb, Fn);
     end
     if ~isOrderLow
-      print_once(sprintf('  max. passband deviation %.4f (%.2f%%), stopband attenuation %.0f dB\n', pbDev, pbDev * 100, sbAtt));
+      ft_info('  max. passband deviation %.4f (%.2f%%), stopband attenuation %.0f dB\n', pbDev, pbDev * 100, sbAtt);
     end
 
     % Plot filter responses
@@ -232,10 +238,12 @@ switch type
       N=floor(size(dat,2)/3) - 2;
       if rem(N,2)==1,   N=N+1;    end
     end
-    [B, A] = fir1(N, max(Fhp)/Fn, 'high');
+    B = fir1(N, max(Fhp)/Fn, 'high');
+    A = 1;
+    
   case 'firls' % from NUTMEG's implementation
     % Deprecated: see bug 2453
-    warning('The filter type you requested is not recommended for neural signals, only proceed if you know what you are doing.')
+    ft_warning('The filter type you requested is not recommended for neural signals, only proceed if you know what you are doing.')
     if isempty(N)
       N = 3*fix(Fs / Fhp);
       if rem(N,2)==1,   N=N+1;    end
@@ -254,6 +262,7 @@ switch type
     z(pos1:pos2) = 1;
     A = 1;
     B = firls(N,f,z); % requires MATLAB signal processing toolbox
+    
   case 'brickwall'
     ax = linspace(0, Fs, size(dat,2));  % frequency coefficients
     fl = nearest(ax, Fhp)-1;            % low cut-off frequency
@@ -262,8 +271,9 @@ switch type
     f(:,1:fl)   = a.*f(:,1:fl);         % perform low cut-off
     filt        = 2*real(ifft(f,[],2)); % iFFT
     return
+    
   otherwise
-    error('unsupported filter type "%s"', type);
+    ft_error('unsupported filter type "%s"', type);
 end
 
 % demean the data before filtering
@@ -277,20 +287,19 @@ catch
     case 'no'
       rethrow(lasterror);
     case 'reduce'
-      warning('backtrace', 'off')
-      warning_once(sprintf('filter instability detected - reducing the %dth order filter to an %dth order filter', N, N-1));
-      warning('backtrace', 'on')
+      ft_warning('off','backtrace');
+      ft_warning('filter instability detected - reducing the %dth order filter to an %dth order filter', N, N-1);
+      ft_warning('on','backtrace');
       filt = ft_preproc_highpassfilter(dat,Fs,Fhp,N-1,type,dir,instabilityfix);
     case 'split'
       N1 = ceil(N/2);
       N2 = floor(N/2);
-      warning('backtrace', 'off')
-      warning_once(sprintf('filter instability detected - splitting the %dth order filter in a sequential %dth and a %dth order filter', N, N1, N2));
-      warning('backtrace', 'on')
+      ft_warning('off','backtrace');
+      ft_warning('filter instability detected - splitting the %dth order filter in a sequential %dth and a %dth order filter', N, N1, N2);
+      ft_warning('on','backtrace');
       filt = ft_preproc_highpassfilter(dat ,Fs,Fhp,N1,type,dir,instabilityfix);
       filt = ft_preproc_highpassfilter(filt,Fs,Fhp,N2,type,dir,instabilityfix);
     otherwise
-      error('incorrect specification of instabilityfix');
+      ft_error('incorrect specification of instabilityfix');
   end % switch
 end
-

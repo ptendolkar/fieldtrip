@@ -6,9 +6,9 @@ function [filename, headerfile, datafile] = dataset2files(filename, format)
 % Use as
 %   [filename, headerfile, datafile] = dataset2files(filename, format)
 
-% Copyright (C) 2007-2013, Robert Oostenveld
+% Copyright (C) 2007-2019, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -65,6 +65,10 @@ switch format
     datafile   = fullfile(path, [file,ext]);
     headerfile = fullfile(path, [file,ext]);
     configfile = fullfile(path, 'config');
+  case {'anywave_ades', 'anywave_dat'}
+    [path, file, ext] = fileparts(filename);
+    datafile   = fullfile(path, [file '.dat']);
+    headerfile = fullfile(path, [file '.ades']);
   case {'ctf_ds', 'ctf_old'}
     % convert CTF filename into filenames
     [path, file, ext] = fileparts(filename);
@@ -96,15 +100,25 @@ switch format
     if length(path)>3 && strcmp(path(end-2:end), '.ds')
       filename = path; % this is the *.ds directory
     end
+  case 'bids_tsv'
+    [path, file, ext] = fileparts(filename);
+    if exist(fullfile(path, [file '.json']), 'file')
+      headerfile   = fullfile(path, [file '.json']);
+    end
+    if exist(fullfile(path, [file '.tsv']), 'file')
+      datafile   = fullfile(path, [file '.tsv']);
+    end
   case 'brainvision_vhdr'
     [path, file, ext] = fileparts(filename);
     headerfile = fullfile(path, [file '.vhdr']);
-    if exist(fullfile(path, [file '.eeg']))
+    if exist(fullfile(path, [file '.eeg']), 'file')
       datafile   = fullfile(path, [file '.eeg']);
-    elseif exist(fullfile(path, [file '.seg']))
+    elseif exist(fullfile(path, [file '.seg']), 'file')
       datafile   = fullfile(path, [file '.seg']);
-    elseif exist(fullfile(path, [file '.dat']))
+    elseif exist(fullfile(path, [file '.dat']), 'file')
       datafile   = fullfile(path, [file '.dat']);
+    else
+      ft_error('cannot determine the data file that corresponds to %s', filename);
     end
   case 'brainvision_eeg'
     [path, file, ext] = fileparts(filename);
@@ -127,7 +141,7 @@ switch format
     headerfile = fullfile(path, [file '.mat']);
     datafile   = fullfile(path, [file '.bin']);
   case 'fcdc_buffer_offline'
-    if isdir(filename)
+    if isfolder(filename)
       path = filename;
     else
       [path, file, ext] = fileparts(filename);
@@ -139,7 +153,7 @@ switch format
     headerfile = fullfile(path, [file '.tsq']);
     datafile   = fullfile(path, [file '.tev']);
   case 'egi_mff'
-    if ~isdir(filename);
+    if ~isfolder(filename);
       [path, file, ext] = fileparts(filename);
       headerfile = path;
       datafile   = path;
@@ -162,6 +176,19 @@ switch format
     filename = fullfile(filename, 'signals'); % this is the only one we care about for the continuous signals
     headerfile = filename;
     datafile   = filename;
+  case 'tmsi_poly5'
+    [p, f, x] = fileparts(filename);
+    if strcmpi(x, '.poly5')
+      headerfile = filename;
+      datafile = filename;
+    else
+      filename = fullfile(p, f, [f '.eeg.poly5']);
+      if ~exist(filename , 'file')
+        filename  = fullfile(p, f, [f '.EEG.Poly5']);
+      end
+      headerfile = filename;
+      datafile = filename;
+    end
   otherwise
     % convert filename into filenames, assume that the header and data are the same
     datafile   = filename;

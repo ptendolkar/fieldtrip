@@ -9,7 +9,7 @@ function [dat] = read_wdq_data(filename, hdr, begsample, endsample, chanindx)
 
 % Copyright (C) 2011, Jan-Mathijs Schoffelen
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -70,7 +70,7 @@ else
   dat = zeros(length(chanindx), nsamplestotal);
 end
 
-fid = fopen(filename, 'r');
+fid = fopen_or_error(filename, 'r');
 for k = 1:nchunks
   % set file pointer to where the data starts in the file
   offset   = (begsample(k)-1) * hdr.nchan * 2;

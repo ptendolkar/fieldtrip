@@ -9,7 +9,7 @@ function [hdr] = read_nex_header(filename)
 
 % Copyright (C) 2007, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -27,7 +27,7 @@ function [hdr] = read_nex_header(filename)
 %
 % $Id$
 
-fid = fopen(filename, 'r', 'ieee-le');
+fid = fopen_or_error(filename, 'r', 'ieee-le');
 
 % reading the file header
 filheader.magicnumber     = fread(fid,4,'uint8=>char')';

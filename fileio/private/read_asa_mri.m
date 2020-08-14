@@ -1,4 +1,4 @@
-function [mri, seg, hdr] = read_asa_mri(fn);
+function [mri, seg, hdr] = read_asa_mri(fn)
 
 % READ_ASA_MRI reads an ASA format MRI file
 %
@@ -15,7 +15,7 @@ function [mri, seg, hdr] = read_asa_mri(fn);
 
 % Copyright (C) 2002, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -61,7 +61,7 @@ seg = [];
 if ~isempty(hdr.mrifile)
   mrifile = fullfile(path, hdr.mrifile);
   mri = zeros(dim);
-  fid = fopen(mrifile, 'rb', 'ieee-le');
+  fid = fopen_or_error(mrifile, 'rb', 'ieee-le');
   mri(:) = fread(fid, prod(dim), 'uint8');
   mri = uint8(mri);
   fclose(fid);
@@ -71,7 +71,7 @@ end
 if ~isempty(hdr.segfile)
   segfile = fullfile(path, hdr.segfile);
   seg = zeros(dim);
-  fid = fopen(segfile, 'rb', 'ieee-le');
+  fid = fopen_or_error(segfile, 'rb', 'ieee-le');
   seg(:) = fread(fid, prod(dim), 'uint8');
   seg = uint8(seg);
   fclose(fid);
@@ -176,7 +176,7 @@ dim = size(mri);
 % and in case of VoxelOn..., ASA counts voxels from the corner of the MRI
 % In both cases, ASA starts counting at [0 0 0], which is C convention
 % whereas I want to count from the 1st voxel and number that with [1 1 1]
-if ~isempty(hdr.posx) & ~isempty(hdr.negy) & ~isempty(hdr.posy)
+if ~isempty(hdr.posx) && ~isempty(hdr.negy) && ~isempty(hdr.posy)
   offset = (dim + [1 1 1])/2;
   hdr.fiducial.mri.nas = hdr.posx + offset;
   hdr.fiducial.mri.lpa = hdr.posy + offset;

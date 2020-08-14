@@ -1,10 +1,8 @@
 function test_bug1014
 
-% MEM 1500mb
+% MEM 2gb
 % WALLTIME 00:10:00
-
-% TEST test_bug1014
-% TEST ft_checkdata ft_appendtimelock ft_selectdata
+% DEPENDENCY ft_checkdata ft_appendtimelock ft_selectdata
 
 a.time   = [1 2];
 a.label  = {'chan'};
@@ -19,7 +17,7 @@ b.avg    = [2 2];
 b.trial  = reshape([6 6; 0 0; 0 0], [3 1 2]);
 
 % the following is to work around
-% http://bugzilla.fcdonders.nl/show_bug.cgi?id=1013
+% http://bugzilla.fieldtriptoolbox.org/show_bug.cgi?id=1013
 
 a.sampleinfo = [1 2; 3 4; 5 6];
 b.sampleinfo = [1 2; 3 4; 5 6];
@@ -28,7 +26,7 @@ b.sampleinfo = [1 2; 3 4; 5 6];
 ft_checkdata(a, 'datatype', 'timelock', 'hassampleinfo', 'ifmakessense');
 ft_checkdata(b, 'datatype', 'timelock', 'hassampleinfo', 'ifmakessense');
 
-c = ft_appendtimelock([], a, b)
+c = ft_appendtimelock([], a, b);
 
 if isfield(c, 'avg') && ~isfield(c, 'trial')
   error('the result should have trial rather than avg');
@@ -36,7 +34,7 @@ end
 
 a = rmfield(a, 'trial');
 b = rmfield(b, 'trial');
-c = ft_appendtimelock([], a, b)
+c = ft_appendtimelock([], a, b);
 
 if isfield(c, 'avg')
   error('the result should not have an average');

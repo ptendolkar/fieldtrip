@@ -9,7 +9,7 @@ function [nearest, distance] = find_nearest(pnt1, pnt2, npart, gridflag)
 
 % Copyright (C) 2007, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -100,10 +100,10 @@ if npnt1==0
   return
 end
 
-minpnt1 = min(pnt1,1);
-minpnt2 = min(pnt2,1);
-maxpnt1 = max(pnt1,1);
-maxpnt2 = max(pnt2,1);
+minpnt1 = min(pnt1,[],1);
+minpnt2 = min(pnt2,[],1);
+maxpnt1 = max(pnt1,[],1);
+maxpnt2 = max(pnt2,[],1);
 pmin = min([minpnt1; minpnt2]) - eps;
 pmax = max([maxpnt1; maxpnt2]) + eps;
 dx = (pmax(1)-pmin(1))/npart;
@@ -147,8 +147,8 @@ for p=1:(npart^3)
   seln = true(nsel1, 1);
   if npart>1
     if partlim(p,1)>pmin(1), seln = seln & (pdist < (pnt1s(:,1) - partlim(p,1))); end
-    if partlim(p,1)>pmin(2), seln = seln & (pdist < (pnt1s(:,2) - partlim(p,2))); end
-    if partlim(p,1)>pmin(3), seln = seln & (pdist < (pnt1s(:,3) - partlim(p,3))); end
+    if partlim(p,2)>pmin(2), seln = seln & (pdist < (pnt1s(:,2) - partlim(p,2))); end
+    if partlim(p,3)>pmin(3), seln = seln & (pdist < (pnt1s(:,3) - partlim(p,3))); end
     if partlim(p,1)<pmin(1), seln = seln & (pdist < (partlim(p,1)) + dx - pnt1s(:,1)); end
     if partlim(p,2)<pmin(2), seln = seln & (pdist < (partlim(p,2)) + dx - pnt1s(:,2)); end
     if partlim(p,3)<pmin(3), seln = seln & (pdist < (partlim(p,3)) + dx - pnt1s(:,3)); end
@@ -162,7 +162,7 @@ for p=1:(npart^3)
   distance(dum1)       = pdist;
 end
 
-% handle the points that ly in empty target partitions
+% handle the points that lie in empty target partitions
 sel = (nearest==0);
 if any(sel)
   if fb, fprintf('%d points in empty target partition\n', sum(sel)); end

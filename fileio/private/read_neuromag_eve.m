@@ -18,7 +18,7 @@ function [col1, col2, col3, col4] = read_neuromag_eve(filename)
 
 % Copyright (C) 2013, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -38,7 +38,7 @@ function [col1, col2, col3, col4] = read_neuromag_eve(filename)
 
 % TODO check sample indexing (1 or 0 based)
 
-fid = fopen(filename, 'rt');
+fid = fopen_or_error(filename, 'rt');
 [a, count] = fscanf(fid, '%f', [inf]);
 fclose(fid);
 

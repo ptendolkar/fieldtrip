@@ -5,7 +5,7 @@ function [x] = ft_struct2single(x, maxdepth)
 % to double precision. It will also convert plain matrices and cell-arrays.
 %
 % Use as
-%    x = ft_struct2single(x);
+%   x = ft_struct2single(x)
 %
 % Starting from MATLAB 7.0, you can use single precision data in your
 % computations, i.e. you do not have to convert back to double precision.
@@ -15,11 +15,11 @@ function [x] = ft_struct2single(x, maxdepth)
 % precision data. After reading a single precision structure from file, you
 % can convert it back with FT_STRUCT2DOUBLE.
 %
-% See also FT_STRUCT2DOUBLE
+% See also FT_STRUCT2DOUBLE, FT_STRUCT2CHAR, FT_STRUCT2STRING
 
 % Copyright (C) 2005-2014, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -50,7 +50,7 @@ x = convert(x, 0, maxdepth);
 function [a] = convert(a, depth, maxdepth)
 
 if depth>maxdepth
-  error('recursive depth exceeded');
+  ft_error('recursive depth exceeded');
 end
 
 switch class(a)

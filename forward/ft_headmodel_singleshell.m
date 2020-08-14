@@ -1,28 +1,31 @@
-function vol = ft_headmodel_singleshell(geometry, varargin)
+function headmodel = ft_headmodel_singleshell(mesh, varargin)
 
 % FT_HEADMODEL_SINGLESHELL creates a volume conduction model of the
 % head for MEG based on a realistic shaped surface of the inside of
 % the skull.
-% 
+%
 % The method implemented in this function allows for a simple and
 % fast method for the MEG forward calculation for one shell of arbitrary
 % shape, based on a correction of the lead field for a spherical
 % volume conductor by a superposition of basis functions, gradients
 % of harmonic functions constructed from spherical harmonics.
-% 
+%
 % This function implements
 %   G. Nolte, "The magnetic lead field theorem in the quasi-static
 %   approximation and its use for magnetoencephalography forward calculation
 %   in realistic volume conductors", Phys Med Biol. 2003 Nov 21;48(22):3637-52.
-% 
+%
 % Use as
-%   vol = ft_headmodel_singleshell(geom, ...)
+%   headmodel = ft_headmodel_singleshell(mesh, ...)
+%
+% Optional input arguments should be specified in key-value pairs and can include
+%   order        = number of iterations in series expansion (default = 10)
 %
 % See also FT_PREPARE_VOL_SENS, FT_COMPUTE_LEADFIELD
 
-% Copyright (C) 2012, Donders Centre for Cognitive Neuroimaging, Nijmegen, NL
+% Copyright (C) 2012-2018, Donders Centre for Cognitive Neuroimaging, Nijmegen, NL
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -40,21 +43,30 @@ function vol = ft_headmodel_singleshell(geometry, varargin)
 %
 % $Id$
 
-% if it contains more than 1 shell it retunrs an error
-if isfield(geometry,'pnt')
-  if numel(geometry)>1
-    error('no more than 1 shell at a time is allowed')
-  end
-else
-  error('the input should be a boundary')
+% order of spherical spherical harmonics
+order = ft_getopt(varargin, 'order', 10);
+
+if isnumeric(mesh) && size(mesh,2)==3
+  % assume that it is a Nx3 array with vertices
+  % convert it to a structure, this is needed to determine the units further down
+  mesh = struct('pos', mesh);
+elseif isstruct(mesh) && isfield(mesh,'bnd')
+  % take the triangulated surfaces from the input structure
+  mesh = mesh.bnd;
 end
 
-% represent the geometry in a headmodel strucure
-% the computational parameters will be added later on by ft_prepare_vol_sens
-vol      = [];
-vol.bnd  = geometry;
-vol.type = 'singleshell';
-if ~isfield(vol, 'unit')
-  vol = ft_convert_units(vol);
+% replace pnt with pos
+mesh = fixpos(mesh);
+
+if ~isstruct(mesh) || numel(mesh)>1 || ~isfield(mesh, 'pos')
+  ft_error('the input mesh should be a set of points or a single triangulated surface')
 end
+
+% represent the mesh in a headmodel strucure
+% the computational parameters will be added later on by ft_prepare_vol_sens
+headmodel       = [];
+headmodel.bnd   = mesh;
+headmodel.type  = 'singleshell';
+headmodel.order = order;
+headmodel       = ft_determine_units(headmodel);
 

@@ -1,12 +1,10 @@
 function test_bug932
 
 % MEM 2gb
-% WALLTIME 00:10:00
+% WALLTIME 00:20:00
+% DEPENDENCY ft_freqstatistics ft_selectdata ft_appendfreq ft_datatype_freq ft_datatype_sens
 
-% TEST test_bug932
-% TEST ft_freqstatistics ft_selectdata ft_appendfreq ft_datatype_freq ft_datatype_sens
-
-cd /home/common/matlab/fieldtrip/data/test/bug932
+cd(dccnpath('/home/common/matlab/fieldtrip/data/test/bug932'));
 
 for tt=[4,6]
   load(strcat('LF_o_', num2str(tt)));
@@ -26,4 +24,3 @@ for tt=[4,6]
   cfg.ivar =1;
   eval(['t_t_o_subj' num2str(tt) ' = ft_freqstatistics(cfg,LF_o,LF_t);']);
 end
-

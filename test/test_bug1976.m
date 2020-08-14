@@ -1,9 +1,8 @@
 function test_bug1976
 
-% MEM 1500mb
+% MEM 2gb
 % WALLTIME 00:10:00
-
-% TEST test_bug1976 ft_sourceanalysis test_ft_sourceanalysis
+% DEPENDENCY ft_sourceanalysis test_ft_sourceanalysis
 
 % clear all
 % close all
@@ -26,7 +25,7 @@ phi(index) = [];
 pnt = [R*cos(theta(:)).*cos(phi(:)) R*cos(theta(:)).*sin(phi(:)) R*sin(theta(:))];
 vol = ft_headmodel_singlesphere(pnt);
 
-%% a few sensors in old fieldtrip style for magnetometer
+%% a few sensors in old FieldTrip style for magnetometer
 N_phi = 15;
 N_theta = 15;
 R = 12;
@@ -61,7 +60,7 @@ for r = linspace(1,9,N_R)
 end
 pos = [R(:).*cos(theta(:)).*cos(phi(:)) R(:).*cos(theta(:)).*sin(phi(:)) R(:).*sin(theta(:))];
 
-%% fieldtrip - lead field
+%% leadfield
 lf = ft_compute_leadfield(pos, sens, vol, 'normalizeparam', 0);
 
 %% forward
@@ -78,15 +77,16 @@ data.dimord = 'chan_time';
 %% inverse
 cfg = [];
 cfg.method = 'mne';
-cfg.grid.pos = pos;
-cfg.grid.inside = 1:size(cfg.grid.pos,1);
-cfg.grid.outside = [];
-cfg.grid.leadfield = cell(1,size(pos,1));
-for ii = 1:length(cfg.grid.leadfield)
-    cfg.grid.leadfield{ii} = lf(:,(1:3) + (ii - 1) * 3);
+cfg.sourcemodel.pos = pos;
+cfg.sourcemodel.inside = 1:size(cfg.sourcemodel.pos,1);
+cfg.sourcemodel.outside = [];
+cfg.sourcemodel.label = sens.label;
+cfg.sourcemodel.leadfield = cell(1,size(pos,1));
+for ii = 1:length(cfg.sourcemodel.leadfield)
+    cfg.sourcemodel.leadfield{ii} = lf(:,(1:3) + (ii - 1) * 3);
 end
 cfg.mne.snr = 1;
-cfg.vol = vol;
+cfg.headmodel = vol;
 cfg.grad = sens;
 source = ft_sourceanalysis(cfg, data);
 

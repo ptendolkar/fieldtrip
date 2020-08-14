@@ -1,20 +1,31 @@
-function [f F]=motif4struct_bin(A)
+function [f,F]=motif4struct_bin(A)
 %MOTIF4STRUCT_BIN       Frequency of structural class-4 motifs
 %
-%   [f F] = motif4struct_bin(A);
+%   [f,F] = motif4struct_bin(A);
 %
-%   Structural motifs are patterns of local connectivity. Motif frequency
-%   is the frequency of occurrence of motifs around a node.
+%   Structural motifs are patterns of local connectivity in complex
+%   networks. Such patterns are particularly diverse in directed networks.
+%   The motif frequency of occurrence around an individual node is known as
+%   the motif fingerprint of that node. The total motif frequency of
+%   occurrence in the whole network is correspondingly known as the
+%   motif fingerprint of the network. 
 %
 %   Input:      A,      binary directed connection matrix
 %
-%   Output:     F,      motif frequency matrix
-%               f,      motif frequency vector (averaged over all nodes)
+%   Output:     F,      node motif frequency fingerprint
+%               f,      network motif frequency fingerprint
 %
-%   Reference: Milo et al. (2002) Science 298:824-827
+%   Note: The function find_motif34.m outputs the motif legend.
+%
+%   References: Milo et al. (2002) Science 298:824-827
+%               Sporns O, Kötter R (2004) PLoS Biol 2: e369
 %
 %
-%   Mika Rubinov, UNSW, 2007-2010
+%   Mika Rubinov, UNSW/U Cambridge, 2007-2015
+
+%   Modification History:
+%   2007: Original
+%   2015: Improved documentation
 
 
 persistent M4n ID4
@@ -37,7 +48,7 @@ for u=1:n-3                                     %loop u 1:n-2
             vz=max(v1,v2);                      %vz: largest rank node
             V3=([false(1,u) As(v2,u+1:n)]);     %v3: all neibs of v2 (>u)
             V3(V2)=0;                           %not already in V1&V2
-            V3=V3|([false(1,v2) As(v1,v2+1:n)]);%and all neibs of v1 (>v2)
+            V3=V3|([false(1,v2) As(v1,v2+1:n)]); %and all neibs of v1 (>v2)
             V3(V1)=0;                           %not already in V1
             V3=V3|([false(1,vz) As(u,vz+1:n)]); %and all neibs of u (>vz)
             for v3=find(V3)

@@ -35,7 +35,7 @@ function ft_realtime_pooraudioproxy(cfg)
 
 % Copyright (C) 2010, Stefan Klanke & Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -71,13 +71,13 @@ if newblocksize<0.5
   newblocksize = 0.5;
 end
 if newblocksize~=cfg.blocksize
-  warning('sestting cfg.blocksize to %f', newblocksize);
+  ft_warning('sestting cfg.blocksize to %f', newblocksize);
   cfg.blocksize = newblocksize;
 end
 
 hdr = [];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% create a fieldtrip compatible header structure
+% create a FieldTrip compatible header structure
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 hdr.Fs                 = cfg.fsample;								  
 hdr.nChans             = cfg.channel;					                  

@@ -1,4 +1,4 @@
-function [el, lab] = read_elec(fn);
+function [el, lab] = read_elec(fn)
 
 % READ_ELEC reads "la/mu" electrode parameters from a MBF electrode file
 % which are used to position them on a triangulated surface
@@ -12,7 +12,7 @@ function [el, lab] = read_elec(fn);
 
 % Copyright (C) 1998, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -30,24 +30,19 @@ function [el, lab] = read_elec(fn);
 %
 % $Id$
 
-fid = fopen(fn, 'rt');
-if fid~=-1
+fid = fopen_or_error(fn, 'rt');
 
-  % read the number of electrodes
-  Nel = sscanf(fgetl(fid), '%d'); 
- 
-  % read the electrode triangle, lambda and mu
-  for i=1:Nel
-    str = fgetl(fid);
-    el(i,:)  = sscanf(str, '%f %f %f')';
-    indx = find(str=='!');
-    if (indx)
-      lab(i,:) = sprintf('%6s', str((indx+1):length(str)));
-    end
+% read the number of electrodes
+Nel = sscanf(fgetl(fid), '%d'); 
+
+% read the electrode triangle, lambda and mu
+for i=1:Nel
+  str = fgetl(fid);
+  el(i,:)  = sscanf(str, '%f %f %f')';
+  indx = find(str=='!');
+  if (indx)
+    lab(i,:) = sprintf('%6s', str((indx+1):length(str)));
   end
-  fclose(fid);
-
-else
-  error('unable to open file');
 end
+fclose(fid);
 

@@ -1,16 +1,12 @@
 function test_bug2232
 
-% MEM 1gb
+% MEM 2gb
 % WALLTIME 00:10:00
-
-% TEST test_bug2232
-% TEST gifti
-% TEST ft_read_headshape
-% TEST ft_read_atlas
+% DEPENDENCY gifti ft_read_headshape ft_read_atlas
 
 ft_hastoolbox('gifti', 1);
 
-datadir = '/home/common/matlab/fieldtrip/data/test/bug2232';
+datadir = dccnpath('/home/common/matlab/fieldtrip/data/test/bug2232');
 d       = dir(datadir);
 subdir  = {d.name}';
 sel     = cellfun(@numel, subdir)>2;
@@ -23,7 +19,7 @@ for k = 1:numel(subdir)
     for m = 1:numel(d)
       fprintf('reading %s\n',d(m).name);
       bnd = ft_read_headshape(fullfile(datadir, subdir{k}, d(m).name));
-      assert(isfield(bnd,'pnt')&&isfield(bnd,'tri'));
+      assert(isfield(bnd, 'pos') && isfield(bnd, 'tri'));
       
       hemi = strfind(d(m).name, '.L.');
       if ~isempty(hemi)
@@ -56,7 +52,7 @@ for k = 1:numel(subdir)
         for m = 1:numel(d)
           fprintf('reading %s\n',d(m).name);
           bnd = ft_read_headshape(fullfile(datadir, subdir{k}, subsubdir{p}, d(m).name));
-          assert(isfield(bnd,'pnt')&&isfield(bnd,'tri'));
+          assert(isfield(bnd, 'pos') && isfield(bnd, 'tri'));
           
           hemi = strfind(d(m).name, '.L.');
           if ~isempty(hemi)

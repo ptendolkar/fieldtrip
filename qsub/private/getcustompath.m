@@ -5,7 +5,7 @@ function [p, d] = getcustompath
 
 % Copyright (C) 2011-2012, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -49,7 +49,7 @@ else
 end
 d = p(~s);
 p = p( s);
-% remove the directory containing the peer code, the slave should use its own
+% remove the directory containing the peer code, the worker should use its own
 f = mfilename('fullpath'); % this is .../peer/private/getcustompath.m
 f = fileparts(f);          % this is .../peer/private
 f = fileparts(f);          % this is .../peer

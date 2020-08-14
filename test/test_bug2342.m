@@ -1,9 +1,9 @@
 function test_bug2342
 
-% MEM 1500mb
+% MEM 2gb
 % WALLTIME 00:10:00
+% DEPENDENCY
 
-% TEST test_bug2342
 
 % first create some data
 %--------------------------------------------------------

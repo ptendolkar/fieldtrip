@@ -1,12 +1,10 @@
 function test_datatype_segmentation
 
-% MEM 1500mb
+% MEM 3gb
 % WALLTIME 00:10:00
+% DEPENDENCY ft_datatype_segmentation ft_datatype
 
-% TEST test_datatype_segmentation
-% TEST ft_datatype_segmentation ft_datatype
-
-% See also http =//bugzilla.fcdonders.nl/show_bug.cgi?id=1652 which
+% See also http =//bugzilla.fieldtriptoolbox.org/show_bug.cgi?id=1652 which
 % includes an elaborate discussion to the 2012 version of the
 % segmentation and parcellation structures.
 
@@ -17,7 +15,7 @@ clear all
 % For example, the AFNI TTatlas+tlrc segmented brain atlas (which can be created with FT_PREPARE_ATLAS) looks like this
 example1.dim = [161 191 141];
 example1.transform = eye(4);
-example1.coord = 'tal';
+example1.coordsys = 'tal';
 example1.unit = 'mm';
 example1.brick0 = zeros(161,191,141, 'uint8');
 example1.brick1 = zeros(161,191,141, 'uint8');

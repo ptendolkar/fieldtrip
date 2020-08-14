@@ -1,25 +1,42 @@
-function [I Q F]=motif4struct_wei(W)
+function [I,Q,F]=motif4struct_wei(W)
 %MOTIF4STRUCT_WEI       Intensity and coherence of structural class-4 motifs
 %
-%   [I Q F] = motif4struct_wei(W);
+%   [I,Q,F] = motif4struct_wei(W);
 %
-%   Structural motifs are patterns of local connectivity. Motif frequency
-%   is the frequency of occurrence of motifs around a node. Motif intensity
-%   and coherence are weighted generalizations of motif frequency. 
+%   Structural motifs are patterns of local connectivity in complex
+%   networks. Such patterns are particularly diverse in directed networks.
+%   The motif frequency of occurrence around an individual node is known as
+%   the motif fingerprint of that node. The motif intensity and coherence
+%   are weighted generalizations of the motif frequency. The motif
+%   intensity is equivalent to the geometric mean of weights of links
+%   comprising each motif. The motif coherence is equivalent to the ratio
+%   of geometric and arithmetic means of weights of links comprising each
+%   motif.
 %
 %   Input:      W,      weighted directed connection matrix
 %                       (all weights must be between 0 and 1)
 %
-%   Output:     I,      motif intensity matrix
-%               Q,      motif coherence matrix
-%               F,      morif frequency matrix
+%   Output:     I,      node motif intensity fingerprint
+%               Q,      node motif coherence fingerprint
+%               F,      node motif frequency fingerprint
 %
-%   Note: Average intensity and coherence are given by I./F and Q./F.
+%   Notes: 
+%       1. The function find_motif34.m outputs the motif legend.
+%       2. Average intensity and coherence are given by I./F and Q./F
+%       3. All weights must be between 0 and 1. This may be achieved using
+%          the weight_conversion.m function, as follows: 
+%          W_nrm = weight_conversion(W, 'normalize');
 %
-%   Reference: Onnela et al. (2005) Phys Rev E 71:065103
+%   References: Onnela et al. (2005), Phys Rev E 71:065103
+%               Milo et al. (2002) Science 298:824-827
+%               Sporns O, Kötter R (2004) PLoS Biol 2: e369%
 %
 %
-%   Mika Rubinov, UNSW, 2007-2010
+%   Mika Rubinov, UNSW/U Cambridge, 2007-2015
+
+%   Modification History:
+%   2007: Original
+%   2015: Improved documentation
 
 persistent M4 M4n ID4 N4
 if isempty(N4)
@@ -44,7 +61,7 @@ for u=1:n-3                                     %loop u 1:n-2
             vz=max(v1,v2);                      %vz: largest rank node
             V3=([false(1,u) As(v2,u+1:n)]);     %v3: all neibs of v2 (>u)
             V3(V2)=0;                           %not already in V1&V2
-            V3=V3|([false(1,v2) As(v1,v2+1:n)]);%and all neibs of v1 (>v2)
+            V3=V3|([false(1,v2) As(v1,v2+1:n)]); %and all neibs of v1 (>v2)
             V3(V1)=0;                           %not already in V1
             V3=V3|([false(1,vz) As(u,vz+1:n)]); %and all neibs of u (>vz)
             for v3=find(V3)

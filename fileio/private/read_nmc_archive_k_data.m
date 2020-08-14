@@ -6,10 +6,10 @@ function [dat] = read_nmc_archive_k_data(datafile, hdr, begsample, endsample, ch
 %   dat = read_nmc_archive_k_data(datafile, hdr, begsample, endsample, channelsel);
 %
 %
-% This function specifically only reads data from one of the archived 
+% This function specifically only reads data from one of the archived
 % datasets of the Neurophysiological Mechanisms of Cognition group of
 % Eric Maris, at the Donders Centre for Cognition, Radboud University,
-% Nijmegen, the Netherlands. It should not be used for any other data 
+% Nijmegen, the Netherlands. It should not be used for any other data
 % format.
 %
 %
@@ -17,7 +17,7 @@ function [dat] = read_nmc_archive_k_data(datafile, hdr, begsample, endsample, ch
 
 % Copyright (C) 2009, Roemer van der Meij
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -42,9 +42,9 @@ function [dat] = read_nmc_archive_k_data(datafile, hdr, begsample, endsample, ch
 
 
 % Getting data-directory out of data-filename and check
-datadir = datafile(1:(findstr(datafile, 'eeg.noreref')+11));
+datadir = datafile(1:(strfind(datafile, 'eeg.noreref')+11));
 if exist(datadir,'dir') ~= 7
-    error('no proper data-directory provided, please check your paths');
+    ft_error('no proper data-directory provided, please check your paths');
 end
 
 % Getting session name + path out of data-filename
@@ -72,22 +72,8 @@ end
 dat = zeros(length(channelsel),(endsample-begsample+1));
 for ichan = 1:length(channelsel)
     channelfile = [sessionpath channelext{ichan}];
-    datafid = fopen(channelfile,'r','l');
+    datafid = fopen_or_error(channelfile,'r','l');
     fseek(datafid,(hdr.nBytes*(begsample-1)),'bof');
     dat(ichan,:) = fread(datafid,(endsample-begsample+1),hdr.dataformat)';
     fclose(datafid);
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-

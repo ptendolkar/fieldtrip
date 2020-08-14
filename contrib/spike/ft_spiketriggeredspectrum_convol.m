@@ -1,36 +1,39 @@
 function [sts] = ft_spiketriggeredspectrum_convol(cfg, data, spike)
 
-% FT_SPIKETRIGGEREDSPECTRUM_CONVOL computes the Fourier spectrum of the LFP
-% around the spikes using convolution of the complete LFP traces. 
-% The difference to FT_SPIKETRIGGEREDSPECTRUM_FFT is that
-% this function allows for multiple frequencies to be processed with
-% different time-windows per frequency, and that
-% FT_SPIKETRIGGEREDSPECTRUM_FFT is based on taking the FFT of a limited LFP segment around each spike.
+% FT_SPIKETRIGGEREDSPECTRUM_CONVOL computes the Fourier spectrum (amplitude and
+% phase) of the LFP around the spikes using convolution of the complete LFP traces. A
+% phase of zero corresponds to the spike being on the peak of the LFP oscillation. A
+% phase of 180 degree corresponds to the spike being in the through of the oscillation.
+% A phase of 45 degrees corresponds to the spike being just after the peak in the LFP.
 %
-% The spike data can either be contained in the data input or in the spike
-% input.
-%
-% The input SPIKE should be organised as the spike or the raw datatype, obtained from
-% FT_SPIKE_MAKETRIALS or FT_PREPROCESSING (in that case, conversion is done
-% within the function)
-%
-% The input DATA should be organised as the raw datatype, obtained from
-% FT_PREPROCESSING or FT_APPENDSPIKE
+% The difference to FT_SPIKETRIGGEREDSPECTRUM_FFT is that this function allows for
+% multiple frequencies to be processed with different time-windows per frequency, and
+% that FT_SPIKETRIGGEREDSPECTRUM_FFT is based on taking the FFT of a limited LFP
+% segment around each spike.
 %
 % Use as
 %   [sts] = ft_spiketriggeredspectrum_convol(cfg,data,spike)
 % or 
 %   [sts] = ft_spiketriggeredspectrum_convol(cfg,data)
+% The spike data can either be contained in the data input or in the spike
+% input.
+%
+% The input DATA should be organised as the raw datatype, obtained from
+% FT_PREPROCESSING or FT_APPENDSPIKE.
+%
+% The input SPIKE should be organised as the spike or the raw datatype, obtained from
+% FT_SPIKE_MAKETRIALS or FT_PREPROCESSING, in which case the conversion is done
+% within this function.
 %
 % Important is that data.time and spike.trialtime should be referenced
 % relative to the same trial trigger times!
 %
-% Configurations (following largely ft_freqanalysis with method mtmconvol)
+% Configurations (following largely FT_FREQNALYSIS with method mtmconvol)
 %     cfg.tapsmofrq       = vector 1 x numfoi, the amount of spectral smoothing through
 %                           multi-tapering. Note that 4 Hz smoothing means
 %                           plus-minus 4 Hz, i.e. a 8 Hz smoothing box.
 %     cfg.foi             = vector 1 x numfoi, frequencies of interest
-%     cfg.taper           = 'dpss', 'hanning' or many others, see WINDOW (default = 'dpss')
+%     cfg.taper           = 'dpss', 'hanning' or many others, see WINDOW (default = 'hanning')
 %     cfg.t_ftimwin       = vector 1 x numfoi, length of time window (in
 %     seconds)
 %     cfg.taperopt        =  parameter that goes in WINDOW function (only
@@ -64,8 +67,8 @@ function [sts] = ft_spiketriggeredspectrum_convol(cfg, data, spike)
 %
 % Outputs:
 %   sts is a spike structure, containing new fields:
-%   sts.fourierspctrm = 1 x nUnits cell array with dimord spike_lfplabel_freq
-%   sts.lfplabel      = 1 x nChan cell array with EEG labels
+%   sts.fourierspctrm = 1 x nUnits cell-array with dimord spike_lfplabel_freq
+%   sts.lfplabel      = 1 x nChan cell-array with EEG labels
 %   sts.freq          = 1 x nFreq frequencies. Note that per default, not
 %                       all frequencies can be used as we compute the DFT
 %                       around the spike based on an uneven number of
@@ -76,28 +79,39 @@ function [sts] = ft_spiketriggeredspectrum_convol(cfg, data, spike)
 %   cfg.borderspikes = 'no', or if cfg.rejectsaturation = 'yes', or if the
 %   trial length was too short for the window desired.
 %
-% A phase of zero corresponds to the spike being on the peak of the LFP
-% oscillation.
-% A phase of 180 degree corresponds to the spike being in the through of the
-% oscillation.
-% A phase of 45 degrees corresponds to the spike being just after the
-% peak in the LFP.
+% WHen using multitapering, the phase distortion is corrected for.
 %
-% If multitapering is used, then the phase distortion induced by
-% multitapering is corrected for
-%
-% Output sts can be input to FT_SPIKETRIGGEREDSPECTRUM_STAT
+% The output STS data structure can be input to FT_SPIKETRIGGEREDSPECTRUM_STAT
 
 % Copyright (C) 2008-2012, Martin Vinck
 %
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
+% for the documentation and details.
+%
+%    FieldTrip is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+%
+%    FieldTrip is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+%    GNU General Public License for more details.
+%
+%    You should have received a copy of the GNU General Public License
+%    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
+%
 % $Id$
 
-revision = '$Id$';
+% these are used by the ft_preamble/ft_postamble function and scripts
+ft_revision = '$Id$';
+ft_nargin   = nargin;
+ft_nargout  = nargout;
 
 % do the general setup of the function
 ft_defaults
 ft_preamble init
-ft_preamble callinfo
+ft_preamble provenance data spike
 ft_preamble trackconfig
 
 % check if the input data is valid for this function
@@ -132,7 +146,7 @@ if  isequal(cfg.taper, 'dpss')
   cfg = ft_checkopt(cfg,'tapsmofrq',{'doublevector', 'doublescalar'});
 end
 
-cfg = ft_checkconfig(cfg, 'allowed', {'taper', 'borderspikes', 't_ftimwin', 'foi', 'spikechannel', 'channel', 'taperopt', 'rejectsaturation','tapsmofrq', 'warning', 'progress'});
+cfg = ft_checkconfig(cfg, 'allowed', {'taper', 'borderspikes', 't_ftimwin', 'foi', 'spikechannel', 'channel', 'taperopt', 'rejectsaturation','tapsmofrq'});
 
 % length of tapsmofrq, foi and t_ftimwin should all be matched
 if isfield(cfg,'tapsmofrq')
@@ -157,8 +171,11 @@ if nargin==2
     cfg.channel      = ft_channelselection(cfg.channel, data.label);  
     if ~all(ismember(cfg.channel,eegchannel)), warning('some of the selected eeg channels appear spike channels'); end    
   end    
-  data_spk = ft_selectdata(data,'channel', cfg.spikechannel);
-  data     = ft_selectdata(data,'channel', cfg.channel); % leave only LFP
+  tmpcfg = [];
+  tmpcfg.channel = cfg.spikechannel;
+  data_spk = ft_selectdata(tmpcfg, data);
+  tmpcfg.channel = cfg.channel;
+  data     = ft_selectdata(tmpcfg, data); % leave only LFP
   spike    = ft_checkdata(data_spk,'datatype', 'spike');
   clear data_spk % remove the continuous data
 else
@@ -361,12 +378,14 @@ sts.trialtime = spike.trialtime;
   
 % do the general cleanup and bookkeeping at the end of the function
 ft_postamble trackconfig
-ft_postamble callinfo
-ft_postamble previous data spike
-ft_postamble history sts
+ft_postamble previous   data spike
+ft_postamble provenance sts
+ft_postamble history    sts
 
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% SUBFUNCTION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [spctrm,foi, numsmp] = phase_est(cfg,dat,time,fsample)
 
 % Phase estimation function
@@ -461,7 +480,7 @@ for iTaper = 1:nTapers
     sinwav  = taper(iTaper,:).*sin(2*pi*(findx-1)*indN/numsmp);
     wavelet = complex(coswav(:), sinwav(:));       
     fftRamp = sum(xKern.*coswav) + 1i*sum(xKern.*sinwav); % fft of ramp with dx/ds = 1 * taper 
-    fftDC   = sum(ones(1,timwinSamples).*coswav) + 1i*sum(ones(1,timwinSamples).*sinwav);% fft of unit direct current * taper
+    fftDC   = sum(ones(1,timwinSamples).*coswav) + 1i*sum(ones(1,timwinSamples).*sinwav); % fft of unit direct current * taper
     spctrm  = spctrm + (conv_fftbased(dat(:),wavelet) - (beta0*fftDC + beta1.*fftRamp))/(numsmp/2);           
                        % fft                       % mean            %linear ramp      % make magnitude invariant to window length                             
 end

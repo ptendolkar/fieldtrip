@@ -26,18 +26,26 @@ function [data] = ft_megplanar(cfg, data)
 % 'sourceproject' method is not supported for frequency domain data.
 %
 % A dipole layer representing the brain surface must be specified with
-%   cfg.inwardshift = depth of the source layer relative to the head model surface (default = 2.5 cm, which is appropriate for a skin-based head model)
+%   cfg.inwardshift = depth of the source layer relative to the head model surface ,
+%                     (default = 2.5 cm, which is appropriate for a skin-based head model)
 %   cfg.spheremesh  = number of dipoles in the source layer (default = 642)
-%   cfg.pruneratio  = for singular values, default is 1e-3
+%   cfg.tolerance   = tolerance ratio for leadfield matrix inverse based on a truncated svd,
+%                     reflects the relative magnitude of the largest singular value
+%                     to retain (default = 1e-3)
 %   cfg.headshape   = a filename containing headshape, a structure containing a
 %                     single triangulated boundary, or a Nx3 matrix with surface
 %                     points
 % If no headshape is specified, the dipole layer will be based on the inner compartment
 % of the volume conduction model.
 %
+% Optionally, you can modify the leadfields by reducing the rank, i.e. remove the weakest orientation
+%   cfg.reducerank    = 'no', or number (default = 3 for EEG, 2 for MEG)
+%   cfg.backproject   = 'yes' or 'no',  determines when reducerank is applied whether the 
+%                       lower rank leadfield is projected back onto the original linear 
+%                       subspace, or not (default = 'yes')
+%
 % The volume conduction model of the head should be specified as
-%   cfg.vol           = structure with volume conduction model, see FT_PREPARE_HEADMODEL
-%   cfg.hdmfile       = name of file containing the volume conduction model, see FT_READ_VOL
+%   cfg.headmodel     = structure with volume conduction model, see FT_PREPARE_HEADMODEL
 %
 % The following cfg fields are optional:
 %   cfg.feedback
@@ -50,11 +58,12 @@ function [data] = ft_megplanar(cfg, data)
 % files should contain only a single variable, corresponding with the
 % input/output structure.
 %
-% See also FT_COMBINEPLANAR, FT_NEIGHBOURSELECTION
+% See also FT_COMBINEPLANAR, FT_PREPARE_NEIGHBOURS
 
-% Copyright (C) 2004, Robert Oostenveld
+% Copyright (C) 2004-2019, Robert Oostenveld
+% Copyright (C) 2020-      Robert Oostenveld and Jan-Mathijs Schoffelen
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -72,49 +81,55 @@ function [data] = ft_megplanar(cfg, data)
 %
 % $Id$
 
-revision = '$Id$';
+% these are used by the ft_preamble/ft_postamble function and scripts
+ft_revision = '$Id$';
+ft_nargin   = nargin;
+ft_nargout  = nargout;
 
 % do the general setup of the function
 ft_defaults
 ft_preamble init
-ft_preamble provenance
-ft_preamble trackconfig
 ft_preamble debug
 ft_preamble loadvar data
+ft_preamble provenance data
+ft_preamble trackconfig
 
-% the abort variable is set to true or false in ft_preamble_init
-if abort
+% the ft_abort variable is set to true or false in ft_preamble_init
+if ft_abort
   return
 end
 
 % store the original input representation of the data, this is used later on to convert it back
 isfreq = ft_datatype(data, 'freq');
-israw  = ft_datatype(data, 'raw');
 istlck = ft_datatype(data, 'timelock');  % this will be temporary converted into raw
 
 % check if the input data is valid for this function, this converts the data if needed
 data = ft_checkdata(data, 'datatype', {'raw' 'freq'}, 'feedback', 'yes', 'hassampleinfo', 'yes', 'ismeg', 'yes', 'senstype', {'ctf151', 'ctf275', 'bti148', 'bti248', 'itab153', 'yokogawa160', 'yokogawa64'});
 
-if istlck
-  % the timelocked data has just been converted to a raw representation
-  % and will be converted back to timelocked at the end of this function
-  israw = true;
+if isfreq
+  if ~isfield(data, 'fourierspctrm'), ft_error('freq data should contain Fourier spectra'); end
 end
 
-if isfreq,
-  if ~isfield(data, 'fourierspctrm'), error('freq data should contain Fourier spectra'); end
-end
+cfg = ft_checkconfig(cfg, 'renamed', {'hdmfile', 'headmodel'});
+cfg = ft_checkconfig(cfg, 'renamed', {'vol',     'headmodel'});
+cfg = ft_checkconfig(cfg, 'renamed', {'grid',    'sourcemodel'});
+cfg = ft_checkconfig(cfg, 'renamed', {'pruneratio', 'tolerance'});
 
 % set the default configuration
 cfg.channel      = ft_getopt(cfg, 'channel',      'MEG');
+cfg.tolerance    = ft_getopt(cfg, 'tolerance',    1e-3);
 cfg.trials       = ft_getopt(cfg, 'trials',       'all', 1);
 cfg.planarmethod = ft_getopt(cfg, 'planarmethod', 'sincos');
 cfg.feedback     = ft_getopt(cfg, 'feedback',     'text');
 
 % check if the input cfg is valid for this function
+cfg = ft_checkconfig(cfg, 'renamedval',  {'headshape', 'headmodel', []});
+
 if ~strcmp(cfg.planarmethod, 'sourceproject')
-  cfg = ft_checkconfig(cfg, 'required', {'neighbours'});
-  cfg.neighbours = struct(cfg.neighbours);
+  % this is limited to reading neighbours from disk and/or selecting channels
+  % the user should call FT_PREPARE_NEIGHBOURS directly for the actual construction
+  tmpcfg = keepfields(cfg, {'neighbours', 'channel', 'showcallinfo'});
+  cfg.neighbours = ft_prepare_neighbours(tmpcfg);
 end
 
 if isfield(cfg, 'headshape') && isa(cfg.headshape, 'config')
@@ -122,17 +137,22 @@ if isfield(cfg, 'headshape') && isa(cfg.headshape, 'config')
   cfg.headshape = struct(cfg.headshape);
 end
 
-cfg = ft_checkconfig(cfg, 'renamedvalue',  {'headshape', 'headmodel', []});
+if isfield(cfg, 'neighbours') && isa(cfg.neighbours, 'config')
+  % convert the nested config-object back into a normal structure
+  cfg.neighbours = struct(cfg.neighbours);
+end
 
 % put the low-level options pertaining to the dipole grid in their own field
-cfg = ft_checkconfig(cfg, 'renamed', {'tightgrid', 'tight'}); % this is moved to cfg.grid.tight by the subsequent createsubcfg
-cfg = ft_checkconfig(cfg, 'renamed', {'sourceunits', 'unit'}); % this is moved to cfg.grid.unit by the subsequent createsubcfg
-cfg = ft_checkconfig(cfg, 'createsubcfg',  {'grid'});
+cfg = ft_checkconfig(cfg, 'renamed', {'tightgrid', 'tight'}); % this is moved to cfg.sourcemodel.tight by the subsequent createsubcfg
+cfg = ft_checkconfig(cfg, 'renamed', {'sourceunits', 'unit'}); % this is moved to cfg.sourcemodel.unit by the subsequent createsubcfg
+
+% put the low-level options pertaining to the sourcemodel in their own field
+cfg = ft_checkconfig(cfg, 'createsubcfg', {'sourcemodel'});
+% move some fields from cfg.sourcemodel back to the top-level configuration
+cfg = ft_checkconfig(cfg, 'createtopcfg', {'sourcemodel'});
 
 % select trials of interest
-tmpcfg = [];
-tmpcfg.trials = cfg.trials;
-tmpcfg.channel = cfg.channel;
+tmpcfg = keepfields(cfg, {'trials', 'channel', 'showcallinfo'}); % don't keep tolerance, it is used differently here
 data = ft_selectdata(tmpcfg, data);
 % restore the provenance information
 [cfg, data] = rollback_provenance(cfg, data);
@@ -151,77 +171,63 @@ if strcmp(cfg.planarmethod, 'sourceproject')
   cfg.spheremesh  = ft_getopt(cfg, 'spheremesh',  642);
   
   if isfreq
-    error('the method ''sourceproject'' is not supported for frequency data as input');
+    ft_error('the method ''sourceproject'' is not supported for frequency data as input');
   end
   
-  Nchan   = length(data.label);
-  Ntrials = length(data.trial);
-  
-  % FT_PREPARE_VOL_SENS will match the data labels, the gradiometer labels and the
+  % PREPARE_HEADMODEL will match the data labels, the gradiometer labels and the
   % volume model labels (in case of a localspheres model) and result in a gradiometer
   % definition that only contains the gradiometers that are present in the data.
-  [vol, axial.grad, cfg] = prepare_headmodel(cfg, data);
+  [headmodel, axial.grad, cfg] = prepare_headmodel(cfg, data);
   
+  % construct the low-level options for the leadfield computation as key-value pairs, these are passed to FT_COMPUTE_LEADFIELD
+  leadfieldopt = {};
+  leadfieldopt = ft_setopt(leadfieldopt, 'reducerank',     ft_getopt(cfg, 'reducerank'));
+  leadfieldopt = ft_setopt(leadfieldopt, 'backproject',    ft_getopt(cfg, 'backproject'));
+  leadfieldopt = ft_setopt(leadfieldopt, 'normalize',      ft_getopt(cfg, 'normalize'));
+  leadfieldopt = ft_setopt(leadfieldopt, 'normalizeparam', ft_getopt(cfg, 'normalizeparam'));
+  leadfieldopt = ft_setopt(leadfieldopt, 'weight',         ft_getopt(cfg, 'weight'));
+
+  % copy all options that are potentially used in FT_PREPARE_SOURCEMODEL
+  tmpcfg           = keepfields(cfg, {'sourcemodel', 'mri', 'headshape', 'symmetry', 'smooth', 'threshold', 'spheremesh', 'inwardshift', 'xgrid' 'ygrid', 'zgrid', 'resolution', 'tight', 'warpmni', 'template', 'showcallinfo'});
+  tmpcfg.headmodel = headmodel;
+  tmpcfg.grad      = axial.grad;
   % determine the dipole layer that represents the surface of the brain
-  if isempty(cfg.headshape)
-    % construct from the inner layer of the volume conduction model
-    pos = headsurface(vol, axial.grad, 'surface', 'cortex', 'inwardshift', cfg.inwardshift, 'npnt', cfg.spheremesh);
-  else
-    % get the surface describing the head shape
-    if isstruct(cfg.headshape) && isfield(cfg.headshape, 'pnt')
-      % use the headshape surface specified in the configuration
-      headshape = cfg.headshape;
-    elseif isnumeric(cfg.headshape) && size(cfg.headshape,2)==3
-      % use the headshape points specified in the configuration
-      headshape.pnt = cfg.headshape;
-    elseif ischar(cfg.headshape)
-      % read the headshape from file
-      headshape = ft_read_headshape(cfg.headshape);
-    else
-      error('cfg.headshape is not specified correctly')
-    end
-    if ~isfield(headshape, 'tri')
-      % generate a closed triangulation from the surface points
-      headshape.pnt = unique(headshape.pnt, 'rows');
-      headshape.tri = projecttri(headshape.pnt);
-    end
-    % construct from the head surface
-    pos = headsurface([], [], 'headshape', headshape, 'inwardshift', cfg.inwardshift, 'npnt', cfg.spheremesh);
-  end
+  sourcemodel = ft_prepare_sourcemodel(tmpcfg);
   
   % compute the forward model for the axial gradiometers
-  fprintf('computing forward model for %d dipoles\n', size(pos,1));
-  lfold = ft_compute_leadfield(pos, axial.grad, vol);
+  ft_info('computing forward model for %d dipoles\n', size(sourcemodel.pos,1));
+  lfold = ft_compute_leadfield(sourcemodel.pos, axial.grad, headmodel, leadfieldopt{:});
   
   % construct the planar gradient definition and compute its forward model
   % this will not work for a localspheres model, compute_leadfield will catch
   % the error
   planar.grad = constructplanargrad([], axial.grad);
-  lfnew = ft_compute_leadfield(pos, planar.grad, vol);
+  lfnew = ft_compute_leadfield(sourcemodel.pos, planar.grad, headmodel, leadfieldopt{:});
   
   % compute the interpolation matrix
-  transform = lfnew * prunedinv(lfold, cfg.pruneratio);
+  transform = lfnew * ft_inv(lfold, 'method', 'tsvd', 'tolerance', cfg.tolerance);
   
   planarmontage = [];
   planarmontage.tra      = transform;
-  planarmontage.labelorg = axial.grad.label;
+  planarmontage.labelold = axial.grad.label;
   planarmontage.labelnew = planar.grad.label;
   
   % apply the linear transformation to the data
   interp  = ft_apply_montage(data, planarmontage, 'keepunused', 'yes');
+  
   % also apply the linear transformation to the gradiometer definition
   interp.grad = ft_apply_montage(data.grad, planarmontage, 'balancename', 'planar', 'keepunused', 'yes');
   
   % ensure there is a type string describing the gradiometer definition
   if ~isfield(interp.grad, 'type')
-    % put the original gradiometer type in (will get _planar appended)
-    interp.grad.type = ft_senstype(data.grad);
+    interp.grad.type = [ft_senstype(data.grad) '_planar'];
+  else
+    interp.grad.type = [interp.grad.type '_planar'];
   end
-  interp.grad.type = [interp.grad.type '_planar'];
   
   %   % interpolate the data towards the planar gradiometers
   %   for i=1:Ntrials
-  %     fprintf('interpolating trial %d to planar gradiometer\n', i);
+  %     ft_info('interpolating trial %d to planar gradiometer\n', i);
   %     interp.trial{i} = transform * data.trial{i}(dataindx,:);
   %   end % for Ntrials
   %
@@ -240,17 +246,17 @@ if strcmp(cfg.planarmethod, 'sourceproject')
   %
 else
   
-  sens = ft_convert_units(data.grad);
+  sens = ft_determine_units(data.grad);
   chanposnans = any(isnan(sens.chanpos(:))) || any(isnan(sens.chanori(:)));
   if chanposnans
-    if isfield(sens, 'chanposorg')
+    if isfield(sens, 'chanposold')
       % temporarily replace chanpos and chanorig with the original values
-      sens.chanpos = sens.chanposorg;
-      sens.chanori = sens.chanoriorg;
-      sens.label = sens.labelorg;
-      sens = rmfield(sens, {'chanposorg', 'chanoriorg', 'labelorg'});
+      sens.chanpos = sens.chanposold;
+      sens.chanori = sens.chanoriold;
+      sens.label   = sens.labelold;
+      sens = rmfield(sens, {'chanposold', 'chanoriold', 'labelold'});
     else
-      error('The channel positions (and/or orientations) contain NaNs; this prohibits correct behavior of the function. Please replace the input channel definition with one that contains valid channel positions');
+      ft_error('The channel positions (and/or orientations) contain NaNs; this prohibits correct behavior of the function. Please replace the input channel definition with one that contains valid channel positions');
     end
   end
   cfg.channel = ft_channelselection(cfg.channel, sens.label);
@@ -264,8 +270,8 @@ else
   cfg.neighbours = cfg.neighbours(neighbsel);
   cfg.neighbsel = channelconnectivity(cfg);
   
-  % determine
-  fprintf('average number of neighbours is %.2f\n', mean(sum(cfg.neighbsel)));
+  assert(any(cfg.neighbsel(:)), 'no neighbours found')
+  ft_info('average number of neighbours is %.2f\n', mean(sum(cfg.neighbsel)));
   
   Ngrad = length(sens.label);
   distance = zeros(Ngrad,Ngrad);
@@ -277,8 +283,8 @@ else
     distance(j,i) = d;
   end
   
-  fprintf('minimum distance between neighbours is %6.2f %s\n', min(distance(distance~=0)), sens.unit);
-  fprintf('maximum distance between gradiometers is %6.2f %s\n', max(distance(distance~=0)), sens.unit);
+  ft_info('minimum distance between neighbours is %6.2f %s\n', min(distance(distance~=0)), sens.unit);
+  ft_info('maximum distance between gradiometers is %6.2f %s\n', max(distance(distance~=0)), sens.unit);
   
   % The following does not work when running in deployed mode because the
   % private functions that compute the planar montage are not recognized as
@@ -287,7 +293,7 @@ else
   % % generically call megplanar_orig megplanar_sincos or megplanar_fitplane
   %fun = ['megplanar_'  cfg.planarmethod];
   %if ~exist(fun, 'file')
-  %  error('unknown method for computation of planar gradient');
+  %  ft_error('unknown method for computation of planar gradient');
   %end
   %planarmontage = eval([fun '(cfg, data.grad)']);
   
@@ -304,7 +310,7 @@ else
     otherwise
       fun = ['megplanar_' cfg.planarmethod];
       if ~exist(fun, 'file')
-        error('unknown method for computation of planar gradient');
+        ft_error('unknown method for computation of planar gradient');
       end
       planarmontage = eval([fun '(cfg, data.grad)']);
   end
@@ -333,20 +339,19 @@ else
   interp.grad.chanpos(ix,:) = sens.chanpos(iy,:);
   
   % if the original chanpos contained nans, make sure to put nans in the
-  % updated one as well, and move the updated chanpos values to chanposorg
+  % updated one as well, and move the updated chanpos values to chanposold
   if chanposnans
-    interp.grad.chanposorg = sens.chanpos;
-    interp.grad.chanoriorg = sens.chanori;
-    interp.grad.labelorg = sens.label;
-    interp.grad.chanpos = nan(size(interp.grad.chanpos));
-    interp.grad.chanori = nan(size(interp.grad.chanori));
+    interp.grad.chanposold = sens.chanpos;
+    interp.grad.chanoriold = sens.chanori;
+    interp.grad.labelold   = sens.label;
+    interp.grad.chanpos    = nan(size(interp.grad.chanpos));
+    interp.grad.chanori    = nan(size(interp.grad.chanori));
   end
 end
 
 if istlck
   % convert the raw structure back into a timelock structure
   interp = ft_checkdata(interp, 'datatype', 'timelock');
-  israw  = false;
 end
 
 % copy the trial specific information into the output
@@ -362,23 +367,11 @@ end
 % do the general cleanup and bookkeeping at the end of the function
 ft_postamble debug
 ft_postamble trackconfig
-ft_postamble provenance
 ft_postamble previous data
 
 % rename the output variable to accomodate the savevar postamble
 data = interp;
 
-ft_postamble history data
-ft_postamble savevar data
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% SUBFUNCTION that computes the inverse using a pruned SVD
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [lfi] = prunedinv(lf, r)
-[u, s, v] = svd(lf);
-p = find(s<(s(1,1)*r) & s~=0);
-fprintf('pruning %d out of %d singular values\n', length(p), min(size(s)));
-s(p) = 0;
-s(find(s~=0)) = 1./s(find(s~=0));
-lfi = v * s' * u';
+ft_postamble provenance data
+ft_postamble history    data
+ft_postamble savevar    data

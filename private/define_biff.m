@@ -1,13 +1,13 @@
 % DEFINE_BIFF script to define the known BIFF chunk types 
 %
-% This function should not be called seperately, it is intended to
+% This function should not be called separately, it is intended to
 % be used from withing read_biff and write_biff.
 %
 % See also READ_BIFF, WRITE_BIFF
 
 % Copyright (C) 2000, Robert Oostenveld
 % 
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify

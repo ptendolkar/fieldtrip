@@ -1,17 +1,15 @@
 function test_bug62
 
-% MEM 1500mb
+% MEM 2gb
 % WALLTIME 00:10:00
-
-% TEST test_bug62
-% TEST ft_read_mri ft_volumenormalise
+% DEPENDENCY ft_read_mri ft_volumenormalise
 
 % spm_brainwarp is missing from external/spm2
 % this should cause ft_volumenormalise to crash
 % if cfg.nonlinear = 'yes';
  
 % reproduce bug
-mrifile = '/home/common/matlab/fieldtrip/data/Subject01.mri';
+mrifile = dccnpath('/home/common/matlab/fieldtrip/data/Subject01.mri');
 mri     = ft_read_mri(mrifile);
 
 cfg           = [];
@@ -45,4 +43,3 @@ cfg.nonlinear = 'yes';
 mri2          = ft_volumenormalise(cfg, mri);
 
 % now it works
-

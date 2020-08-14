@@ -1,20 +1,23 @@
 function [cfg] = ft_topoplotCC(cfg, freq)
 
-% FT_TOPOPLOTCC plots the coherence between channel pairs
+% FT_TOPOPLOTCC plots the coherence or connectivity between channel pairs
 %
 % Use as
 %  ft_topoplotCC(cfg, freq)
 %
 % The configuration should contain:
-%   cfg.feedback    = string (default = 'textbar')
-%   cfg.layout      = specification of the layout, see FT_PREPARE_LAYOUT
-%   cfg.foi         = the frequency of interest which is to be plotted (default is the first frequency bin)
-%   cfg.widthparam  = string, parameter to be used to control the line width (see below)
-%   cfg.alphaparam  = string, parameter to be used to control the opacity (see below)
-%   cfg.colorparam  = string, parameter to be used to control the line color
+%   cfg.feedback      = string (default = 'textbar')
+%   cfg.layout        = specification of the layout, see FT_PREPARE_LAYOUT
+%   cfg.foi           = the frequency of interest which is to be plotted (default is the first frequency bin)
+%   cfg.widthparam    = string, parameter to be used to control the line width (see below)
+%   cfg.alphaparam    = string, parameter to be used to control the opacity (see below)
+%   cfg.colorparam    = string, parameter to be used to control the line color
+%   cfg.visible       = string, 'on' or 'off' whether figure will be visible (default = 'on')
+%   cfg.position      = location and size of the figure, specified as a vector of the form [left bottom width height]
+%   cfg.renderer      = string, 'opengl', 'zbuffer', 'painters', see MATLAB Figure Properties. If this function crashes, you should try 'painters'.
 %
-% The widthparam should be indicated in pixels, e.g. usefull numbers are 1
-% and larger.
+% The widthparam should be indicated in pixels, e.g. usefull numbers are 1 and
+% larger.
 %
 % The alphaparam should be indicated as opacity between 0 (fully transparent)
 % and 1 (fully opaque).
@@ -22,9 +25,9 @@ function [cfg] = ft_topoplotCC(cfg, freq)
 % The default is to plot the connections as lines, but you can also use
 % bidirectional arrows:
 %    cfg.arrowhead    = string, 'none', 'stop', 'start', 'both' (default = 'none')
-%    cfg.arrowsize    = scalar, size of the arrow head in figure units, 
+%    cfg.arrowsize    = scalar, size of the arrow head in figure units,
 %                       i.e. the same units as the layout (default is automatically determined)
-%    cfg.arrowoffset  = scalar, amount that the arrow is shifted to the side in figure units, 
+%    cfg.arrowoffset  = scalar, amount that the arrow is shifted to the side in figure units,
 %                       i.e. the same units as the layout (default is automatically determined)
 %    cfg.arrowlength  = scalar, amount by which the length is reduced relative to the complete line (default = 0.8)
 %
@@ -33,11 +36,11 @@ function [cfg] = ft_topoplotCC(cfg, freq)
 % If you specify this option the input data will be read from a *.mat
 % file on disk. This mat files should contain only a single variable named 'data',
 % corresponding to the input structure. For this particular function, the input should be
-% structured as a cell array.
+% structured as a cell-array.
 %
 % See also FT_PREPARE_LAYOUT, FT_MULTIPLOTCC, FT_CONNECTIVITYPLOT
 
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -55,18 +58,21 @@ function [cfg] = ft_topoplotCC(cfg, freq)
 %
 % $Id$
 
-revision = '$Id$';
+% these are used by the ft_preamble/ft_postamble function and scripts
+ft_revision = '$Id$';
+ft_nargin   = nargin;
+ft_nargout  = nargout;
 
 % do the general setup of the function
 ft_defaults
 ft_preamble init
-ft_preamble provenance
-ft_preamble trackconfig
 ft_preamble debug
 ft_preamble loadvar freq
+ft_preamble provenance freq
+ft_preamble trackconfig
 
-% the abort variable is set to true or false in ft_preamble_init
-if abort
+% the ft_abort variable is set to true or false in ft_preamble_init
+if ft_abort
   return
 end
 
@@ -77,19 +83,20 @@ freq = ft_checkdata(freq, 'cmbrepresentation', 'sparse');
 cfg = ft_checkconfig(cfg, 'required', {'foi', 'layout'});
 
 % set the defaults
-cfg.feedback   = ft_getopt(cfg, 'feedback',   'text');
-cfg.alphaparam = ft_getopt(cfg, 'alphaparam', []);
-cfg.widthparam = ft_getopt(cfg, 'widthparam', []);
-cfg.colorparam = ft_getopt(cfg, 'colorparam', 'cohspctrm');
-cfg.newfigure  = ft_getopt(cfg, 'newfigure',  'yes');
-
-cfg.arrowhead  = ft_getopt(cfg, 'arrowhead', 'none'); % none, stop, start, both
-cfg.arrowsize  = ft_getopt(cfg, 'arrowsize', nan);    % length of the arrow head, should be in in figure units, i.e. the same units as the layout
-cfg.arrowoffset = ft_getopt(cfg, 'arrowoffset', nan); % absolute, should be in figure units, i.e. the same units as the layout
-cfg.arrowlength = ft_getopt(cfg, 'arrowlength', 0.8);% relative to the complete line
+cfg.feedback    = ft_getopt(cfg, 'feedback',    'text');
+cfg.alphaparam  = ft_getopt(cfg, 'alphaparam',  []);
+cfg.widthparam  = ft_getopt(cfg, 'widthparam',  []);
+cfg.colorparam  = ft_getopt(cfg, 'colorparam',  'cohspctrm');
+cfg.arrowhead   = ft_getopt(cfg, 'arrowhead',   'none');  % none, stop, start, both
+cfg.arrowsize   = ft_getopt(cfg, 'arrowsize',   nan);     % length of the arrow head, should be in in figure units, i.e. the same units as the layout
+cfg.arrowoffset = ft_getopt(cfg, 'arrowoffset', nan);     % absolute, should be in figure units, i.e. the same units as the layout
+cfg.arrowlength = ft_getopt(cfg, 'arrowlength', 0.8);     % relative to the complete line
 cfg.linestyle   = ft_getopt(cfg, 'linestyle',   []);
+cfg.colormap    = ft_getopt(cfg, 'colormap',    colormap);
+cfg.renderer    = ft_getopt(cfg, 'renderer'); % let MATLAB decide on the default
 
-lay = ft_prepare_layout(cfg, freq);
+tmpcfg = keepfields(cfg, {'layout', 'rows', 'columns', 'commentpos', 'scalepos', 'projection', 'viewpoint', 'rotate', 'width', 'height', 'elec', 'grad', 'opto', 'showcallinfo'});
+lay = ft_prepare_layout(tmpcfg, freq);
 
 beglabel = freq.labelcmb(:,1);
 endlabel = freq.labelcmb(:,2);
@@ -116,70 +123,56 @@ else
   colorparam = [];
 end
 
-if strcmp(cfg.newfigure, 'yes')
-  figure
-end
+% open a new figure with the specified settings
+open_figure(keepfields(cfg, {'newfigure', 'position', 'visible', 'renderer'}));
 
 hold on
 axis equal
-
-% set the figure window title
-funcname = mfilename();
-if nargin < 2
-  dataname = cfg.inputfile;
-else
-  dataname = inputname(2);
-end
-set(gcf, 'Name', sprintf('%d: %s: %s', double(gcf), funcname, join_str(', ',dataname)));
-set(gcf, 'NumberTitle', 'off');
 
 if isnan(cfg.arrowsize)
   % use the size of the figure to estimate a decent number
   siz = axis;
   cfg.arrowsize = (siz(2) - siz(1))/50;
-  warning('using an arrowsize of %f', cfg.arrowsize);
+  ft_warning('using an arrowsize of %f', cfg.arrowsize);
 end
 
 if isnan(cfg.arrowoffset)
   % use the size of the figure to estimate a decent number
   siz = axis;
   cfg.arrowoffset = (siz(2) - siz(1))/100;
-  warning('using an arrowoffset of %f', cfg.arrowoffset);
+  ft_warning('using an arrowoffset of %f', cfg.arrowoffset);
 end
 
-rgb  = colormap;
+rgb = cfg.colormap;
 if ~isempty(colorparam)
   cmin = min(colorparam(:));
   cmax = max(colorparam(:));
   
-  % this line creates a sorting vector that cause the most extreme valued
-  % arrows to be plotted last
+  % this line creates a sorting vector that cause the most extreme valued arrows to be plotted last
   [srt, srtidx] = sort(abs(colorparam));
- 
+  
   colorparam = (colorparam - cmin)./(cmax-cmin);
   colorparam = round(colorparam * (size(rgb,1)-1) + 1);
 end
 
-if strcmp(cfg.newfigure, 'yes')
-  ft_plot_lay(lay, 'label', 'no', 'box', 'off');
-end % if newfigure
+% add the outline of the layout
+ft_plot_layout(lay, 'label', false, 'box', false, 'mask', false);
 
 % fix the limits for the axis
 axis(axis);
-
-ft_progress('init', cfg.feedback, 'plotting connections...');
 
 if ~exist('srtidx', 'var')
   srtidx = 1:ncmb;
 end
 
-for i=srtidx(:)'
+ft_progress('init', cfg.feedback, 'plotting connections...');
 
+for i=srtidx(:)'
+  
   if strcmp(beglabel{i}, endlabel{i})
     % skip autocombinations
     continue
   end
-
   
   if widthparam(i)>0 && (isempty(alphaparam)||alphaparam(i)>0)
     ft_progress(i/ncmb, 'plotting connection %d from %d (%s -> %s)\n', i, ncmb, beglabel{i}, endlabel{i});
@@ -249,7 +242,7 @@ for i=srtidx(:)'
             
             directionbeg = directionbeg/norm(directionbeg);
             directionend = directionend/norm(directionend);
-           
+            
             switch cfg.arrowhead
               case 'stop'
                 pnt1 = arrowend - 0.05*directionend + 0.02*[directionend(2) -directionend(1)];
@@ -273,7 +266,7 @@ for i=srtidx(:)'
                 pnt2 = arrowend;
                 pnt3 = arrowend - 0.05*directionend - 0.02*[directionend(2) -directionend(1)];
                 h_arrow(2) = patch([pnt1(1) pnt2(1) pnt3(1)]', [pnt1(2) pnt2(2) pnt3(2)]', [0 0 0]);
-                             
+                
             end
           else
             h_arrow = [];
@@ -302,15 +295,33 @@ for i=srtidx(:)'
           
           
         otherwise
-          error('unsupported linestyle specified');
+          ft_error('unsupported linestyle specified');
       end
       
-    end
-    
-
+    end % if empty linestyle
   end
-end
+end % for srtindx
+
 ft_progress('close');
+
+% this is needed for the figure title
+if isfield(cfg, 'dataname') && ~isempty(cfg.dataname)
+  dataname = cfg.dataname;
+elseif isfield(cfg, 'inputfile') && ~isempty(cfg.inputfile)
+  dataname = cfg.inputfile;
+elseif nargin>1
+  dataname = arrayfun(@inputname, 2:nargin, 'UniformOutput', false);
+else
+  dataname = {};
+end
+
+% set the figure window title
+if ~isempty(dataname)
+  set(gcf, 'Name', sprintf('%d: %s: %s', double(gcf), mfilename, join_str(', ', dataname)));
+else
+  set(gcf, 'Name', sprintf('%d: %s', double(gcf), mfilename));
+end
+set(gcf, 'NumberTitle', 'off');
 
 % improve the fit in the axis
 axis tight
@@ -318,9 +329,17 @@ axis tight
 % do the general cleanup and bookkeeping at the end of the function
 ft_postamble debug
 ft_postamble trackconfig
-ft_postamble provenance
 ft_postamble previous freq
+ft_postamble provenance
+ft_postamble savefig
 
+% add a menu to the figure, but only if the current figure does not have subplots
+menu_fieldtrip(gcf, cfg, false);
+
+if ~ft_nargout
+  % don't return anything
+  clear cfg
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % SUBFUNCTION for plotting arrows, see also fieldtrip/private/arrow
@@ -344,25 +363,24 @@ switch ends
     pnt2 = arrowend;
     pnt3 = arrowend - length*direction - 0.4*length*offset;
     h(end+1) = patch([pnt1(1) pnt2(1) pnt3(1)]', [pnt1(2) pnt2(2) pnt3(2)]', color);
-
+    
   case 'start'
     pnt1 = arrowbeg + length*direction + 0.4*length*offset;
     pnt2 = arrowbeg;
     pnt3 = arrowbeg + length*direction - 0.4*length*offset;
     h(end+1) = patch([pnt1(1) pnt2(1) pnt3(1)]', [pnt1(2) pnt2(2) pnt3(2)]', color);
-
+    
   case 'both'
     pnt1 = arrowend - length*direction + 0.4*length*offset;
     pnt2 = arrowend;
     pnt3 = arrowend - length*direction - 0.4*length*offset;
     h(end+1) = patch([pnt1(1) pnt2(1) pnt3(1)]', [pnt1(2) pnt2(2) pnt3(2)]', color);
-
+    
     pnt1 = arrowbeg + length*direction + 0.4*length*offset;
     pnt2 = arrowbeg;
     pnt3 = arrowbeg + length*direction - 0.4*length*offset;
     h(end+1) = patch([pnt1(1) pnt2(1) pnt3(1)]', [pnt1(2) pnt2(2) pnt3(2)]', color);
-
+    
   case 'none'
     % don't draw arrow heads
 end
-

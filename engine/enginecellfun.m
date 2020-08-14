@@ -40,7 +40,7 @@ function varargout = enginecellfun(fname, varargin)
 % $Id$
 % -----------------------------------------------------------------------
 
-if matlabversion(7.8, Inf)
+if ft_platform_supports('onCleanup')
   % switch to zombie when finished or when ctrl-c gets pressed
   % the onCleanup function does not exist for older versions
   onCleanup(@cleanupfun);
@@ -71,7 +71,7 @@ end
 
 % there are potentially errors to catch from the which() function
 if isempty(which(fname))
-  error('Not a valid M-file (%s).', fname);
+  error('not a valid M-file "%s"', fname);
 end
 
 % determine the number of input arguments and the number of jobs

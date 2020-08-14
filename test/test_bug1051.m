@@ -1,15 +1,14 @@
 function test_bug1051
 
-% MEM 1500mb
+% MEM 2gb
 % WALLTIME 00:10:00
+% DEPENDENCY ft_prepare_neighbours ft_megplanar ft_apply_montage
 
-% TEST test_bug1051 ft_megplanar ft_apply_montage
-
-% the bug consists of ft_apply_montage not adequately dealing with 
+% the bug consists of ft_apply_montage not adequately dealing with
 % sensor descriptions that contain coilori/pos chanori/pos.
 % The chanori/chanpos get lost along the way
 
-cd /home/common/matlab/fieldtrip/data/test/latest/raw/meg/
+cd(dccnpath('/home/common/matlab/fieldtrip/data/test/latest/raw/meg'));
 load preproc_ctf151
 
 cfg.method = 'triangulation';

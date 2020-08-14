@@ -1,11 +1,11 @@
 function y = istrue(x)
 
-% ISTRUE ensures that a true/false input argument like "yes", "true"
-% or "on" is converted into a boolean
+% ISTRUE converts an input argument like "yes/no", "true/false" or "on/off" into a
+% boolean. If the input is boolean, then it will remain like that.
 
 % Copyright (C) 2009-2012, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -35,8 +35,13 @@ if ischar(x)
   else
     error('cannot determine whether "%s" should be interpreted as true or false', x);
   end
-else
+elseif isnumeric(x) && numel(x)==1
   % convert numerical value to boolean
   y = logical(x);
+elseif islogical(x) && numel(x)==1
+  % keep as it is
+  y = x;
+else
+  ft_error('ambiguous input, cannot determine whether it is true or false');
 end
 

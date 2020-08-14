@@ -30,7 +30,7 @@ function [basis,gradbasis]=legs(x,dir,n,scale)
 
 % Copyright (C) 2003, Guido Nolte
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -81,7 +81,7 @@ for in=1:n; for im=1:n+1
     end;end;
 for in=1:n
     shiftminusfactors(in,1)=1;
-end;
+end
 
 
 leg0=zeros(n,n+1,n1);

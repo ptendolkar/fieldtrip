@@ -27,7 +27,7 @@ function [spectrum,freqoi,timeoi] = ft_specest_wavelet(dat, time, varargin)
 
 % Copyright (C) 2010, Donders Institute for Brain, Cognition and Behaviour
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -56,7 +56,7 @@ polyorder = ft_getopt(varargin, 'polyorder', 0);
 fbopt     = ft_getopt(varargin, 'feedback');
 verbose   = ft_getopt(varargin, 'verbose', true);
 
-if isempty(fbopt),
+if isempty(fbopt)
   fbopt.i = 1;
   fbopt.n = 1;
 end
@@ -65,8 +65,7 @@ end
 [nchan,ndatsample] = size(dat);
 
 % This does not work on integer data
-typ = class(dat);
-if ~strcmp(typ, 'double') && ~strcmp(typ, 'single')
+if ~isa(dat, 'double') && ~isa(dat, 'single')
   dat = cast(dat, 'double');
 end
 
@@ -81,7 +80,7 @@ dattime = ndatsample / fsample; % total time in seconds of input data
 
 % Zero padding
 if round(pad * fsample) < ndatsample
-  error('the padding that you specified is shorter than the data');
+  ft_error('the padding that you specified is shorter than the data');
 end
 if isempty(pad) % if no padding is specified padding is equal to current data length
   pad = dattime;
@@ -114,13 +113,13 @@ if isnumeric(freqoiinput)
   % check whether padding is appropriate for the requested frequency resolution
   rayl = 1/endtime;
   if any(rem(freqoiinput,rayl)) % not always the case when they mismatch
-    warning_once('padding not sufficient for requested frequency resolution, for more information please see the FAQs on www.ru.nl/neuroimaging/fieldtrip');
+    ft_warning('padding not sufficient for requested frequency resolution, for more information please see the FAQs on www.ru.nl/neuroimaging/fieldtrip');
   end
   if numel(freqoiinput) ~= numel(freqoi) % freqoi will not contain double frequency bins when requested
-    warning_once('output frequencies are different from input frequencies, multiples of the same bin were requested but not given');
+    ft_warning('output frequencies are different from input frequencies, multiples of the same bin were requested but not given');
   else
     if any(abs(freqoiinput-freqoi) >= eps*1e6)
-      warning_once('output frequencies are different from input frequencies');
+      ft_warning('output frequencies are different from input frequencies');
     end
   end
 end
@@ -141,10 +140,10 @@ end
 % throw a warning if input timeoi is different from output timeoi
 if isnumeric(timeoiinput)
   if numel(timeoiinput) ~= numel(timeoi) % timeoi will not contain double time-bins when requested
-    warning_once('output time-bins are different from input time-bins, multiples of the same bin were requested but not given');
+    ft_warning('output time-bins are different from input time-bins, multiples of the same bin were requested but not given');
   else
     if any(abs(timeoiinput-timeoi) >= eps*1e6)
-      warning_once('output time-bins are different from input time-bins');
+      ft_warning('output time-bins are different from input time-bins');
     end
   end
 end
@@ -191,7 +190,7 @@ for ifreqoi = 1:nfreqoi
   %   else
   %     line([ceil(tline) ceil(tline)],[-max(abs(wavelet)) max(abs(wavelet))],'color','g','linestyle','--');
   %     line([floor(tline) floor(tline)],[-max(abs(wavelet)) max(abs(wavelet))],'color','g','linestyle','--');
-  %   end;
+  %   end
   %   subplot(2,1,2);
   %   plot(angle(wavelet),'color','g');
   %   if mod(tline,2)==0,

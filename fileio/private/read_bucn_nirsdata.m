@@ -7,10 +7,12 @@ function [dat] = read_bucn_nirsdata(filename, hdr, begsample, endsample, chanind
 %
 % Use as
 %   [dat] = read_bucn_nirsdata(filename, hdr, begsample, endsample, chanindx)
+%
+% See also READ_BUCN_NIRSHDR, READ_BUCN_NIRSEVENT
 
 % Copyright (C) 2011, Jan-Mathijs Schoffelen
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -33,7 +35,7 @@ nchan = numel(hdr.label);
 str   = repmat('%f', [1 nchan]);
 
 % read the designated samples
-fid = fopen(filename, 'r');
+fid = fopen_or_error(filename, 'r');
 dat = textscan(fid, str, endsample-begsample+1, 'HeaderLines', begsample);
 fclose(fid);
 
@@ -48,7 +50,7 @@ dat   = dat(chanindx, :);
 % the slower alternative is below which reads the whole file each time
 % and thus is slow for multiple trials
 %
-% fid = fopen(filename, 'r');
+% fid = fopen_or_error(filename, 'r');
 % dat = textscan(fid, '%f', 'Headerlines', 1);
 % dat = reshape(dat, nchan, []);
 % dat = dat(chanindx, begsample:endsample);

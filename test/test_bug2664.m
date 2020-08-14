@@ -2,12 +2,9 @@ function test_bug2664
 
 % MEM 2gb
 % WALLTIME 00:10:00
-
-% TEST test_bug2664
-% TEST ft_sourceanalysis ft_checkdata
+% DEPENDENCY ft_sourceanalysis ft_checkdata
 
 %% create some data
-
 data = [];
 data.label = {'a' 'b' 'c'};
 data.fsample = 256;
@@ -26,8 +23,8 @@ cfg.method = 'mne';
 % error we are testing for is a different one ("Reference to non-existent
 % field 'topo'." )
 cfg.elec = [];
-cfg.grid = [];
-cfg.vol = [];
+cfg.sourcemodel = [];
+cfg.headmodel = [];
 cfg.hdmfile = [];
 
 cfg.rawtrial = 'yes';

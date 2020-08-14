@@ -5,9 +5,9 @@ function [version] = hasyokogawa(desired)
 % installed. Only the newest version of the toolbox is accepted.
 %
 % Use as
-%   [string]  = hasyokogawa;
+%   string  = hasyokogawa;
 % which returns a string describing the toolbox version, e.g. "12bitBeta3",
-% "16bitBeta3", or "16bitBeta6" for preliminary versions, or '1.4' for the
+% "16bitBeta3", or "16bitBeta6" for preliminary versions, or '1.5' for the
 % official Yokogawa MEG Reader Toolbox. An empty string is returned if the toolbox
 % is not installed. The string "unknown" is returned if it is installed but
 % the version is unknown.
@@ -21,7 +21,7 @@ function [version] = hasyokogawa(desired)
 
 % Copyright (C) 2010, Tilmann Sander-Thoemmes
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -39,22 +39,22 @@ function [version] = hasyokogawa(desired)
 %
 % $Id$
 
-ws = warning('off', 'MATLAB:pfileOlderThanMfile');
+ws = ft_warning('off', 'MATLAB:pfileOlderThanMfile');
 
 % there are a few versions of the old preliminary implementation, such as
 % 12bitBeta3, 16bitBeta3 and 16bitBeta6. In 2011 a completely new
-% implementation was officially released, which contains functions with
-% other names. At the time of writing this, the new implementation is
-% version 1.4.
+% implementation was officially released, which contains functions with other names.
+% At the time of writing this [2018.06.08],
+% the new implementation, Yokogawa MEG Reader, is version 1.5, in which EEG data are supported.
 
-if exist('getYkgwVersion')
+if exist('getYkgwVersion', 'file')
   res = getYkgwVersion();
   version = res.version;
 
-elseif exist('GetMeg160ADbitInfoM') || exist('GetMeg160ChannelInfoM') || exist('GetMeg160ContinuousRawDataM')
+elseif exist('GetMeg160ADbitInfoM', 'file') || exist('GetMeg160ChannelInfoM', 'file') || exist('GetMeg160ContinuousRawDataM', 'file')
   % start with unknown, try to refine the version
   version = 'unknown';
-  
+
   try
     % Call some functions with input argument "Inf": If
     % the functions are present they return their revision number.
@@ -74,18 +74,18 @@ elseif exist('GetMeg160ADbitInfoM') || exist('GetMeg160ChannelInfoM') || exist('
     elseif [0 2 2 5] == [rev_ADbitInfoM rev_ChannelInfoM rev_AmpGainM rev_MatchingInfoM]
       version='16bitBeta6';
     else
-      warning('The version of the installed Yokogawa toolbox cannot be determined.');
+      ft_warning('The version of the installed Yokogawa toolbox cannot be determined.');
     end
   catch
     m = lasterror;
     m.identifier;
     if strcmp(m.identifier, 'MATLAB:UndefinedFunction') || strcmp(m.identifier, 'MATLAB:FileIO:InvalidFid')
-      if (exist('GetMeg160ChannelInfoM') && exist('GetMeg160ContinuousRawDataM'));
+      if (exist('GetMeg160ChannelInfoM', 'file') && exist('GetMeg160ContinuousRawDataM', 'file'));
         version = '12bitBeta3';
       end
     end
   end
-  
+
 else
   % return empty if none of them is present
   version = [];
@@ -95,10 +95,10 @@ if nargin>0
   % return a true/false value
   if isempty(version)
     version = false;
-  else 
+  else
     version = strcmpi(version, desired);
   end
 end
 
 % revert to the original warning state
-warning(ws);
+ft_warning(ws);

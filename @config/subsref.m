@@ -4,7 +4,7 @@ function varargout = subsref(x, index, inc)
 
 % Copyright (C) 2012-2015, Donders Centre for Cognitive Neuroimaging, Nijmegen, NL
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -45,7 +45,7 @@ if length(index)==1
       varargout      = cell(1, numel(x));
       [varargout{:}] = get(x, index.subs, inc);
     case '{}'
-      error('Cell contents reference from a non-cell array object.');
+      error('Cell contents reference from a non-cell-array object.');
     case '()'
       % add singleton dimensions to the end
       index.subs((ndims+1):6) = {1};
@@ -103,7 +103,7 @@ end
 %         y{1} = get(x, index.subs, inc);
 %       end
 %     case '{}'
-%       error('Cell contents reference from a non-cell array object.');
+%       error('Cell contents reference from a non-cell-array object.');
 %     case '()'
 %         y{1} = x(index.subs{1});
 %     otherwise

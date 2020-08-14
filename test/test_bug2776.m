@@ -2,6 +2,7 @@ function test_bug2776
 
 % WALLTIME 00:10:00
 % MEM 1gb
+% DEPENDENCY
 
 % see http://nl.mathworks.com/help/signal/ug/psd-estimate-using-fft.html
 
@@ -46,7 +47,7 @@ ylabel('Power/Frequency (au^2/Hz)')
 figure
 periodogram(x,rectwin(length(x)),length(x))
 
-%% fieldtrip style
+%% FieldTrip style
 
 data = [];
 data.time{1}  = t;

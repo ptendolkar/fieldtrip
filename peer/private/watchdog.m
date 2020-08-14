@@ -1,15 +1,15 @@
 function watchdog
 
-% WATCHDOG will trigger an exit() if the master disappears or if the allowed time elapsed
+% WATCHDOG will trigger an exit() if the controller disappears or if the allowed time elapsed
 %
 % To enable the watchdog you should do 
-%   watchdog(masterid, time)
+%   watchdog(controllerid, time)
 % and to disable it again
 %   clear watchdog
 
 % Copyright (C) 2012, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify

@@ -1,12 +1,10 @@
 function test_bug2
 
-% MEM 1500mb
+% MEM 2gb
 % WALLTIME 00:10:00
+% DEPENDENCY ft_freqanalysis ft_megplanar 
 
-% TEST test_bug2
-% TEST ft_freqanalysis ft_megplanar 
-
-load /home/common/matlab/fieldtrip/data/ftp/tutorial/eventrelatedaveraging/dataFC_LP.mat
+load(dccnpath('/home/common/matlab/fieldtrip/data/ftp/tutorial/eventrelatedaveraging/dataFC_LP.mat'));
 
 cfg = [];
 cfg.trials = 1:5;
@@ -49,4 +47,3 @@ cfg.neighbours = neighbours;
 dataP  = ft_megplanar(cfg, data);
 freq1P = ft_megplanar(cfg, freq1);
 freq2P = ft_megplanar(cfg, freq2);
-

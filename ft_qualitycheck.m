@@ -1,22 +1,21 @@
 function [varargout] = ft_qualitycheck(cfg)
 
-% FT_QUALITYCHECK performs a quality inspection of a given MEG/EEG dataset, 
+% FT_QUALITYCHECK performs a quality inspection of a given MEG/EEG dataset,
 % stores (.mat), and visualizes the result (.png and .pdf).
 %
 % This function segments the data into 10-second pieces and performs the
 % following analyses:
-% 1) reads the properties of the dataset
-% 2) computes the headpositions and distance covered from recording onset
-%    (CTF only)
-% 3) computes the mean, max, min, and range of the signal amplitude
-% 4) detects trigger events
-% 5) detects jump artifacts
-% 6) computes the powerspectrum
-% 7) estimates the low-frequency (<2 Hz) and line noise (~50 Hz) 
+%  1) reads the properties of the dataset
+%  2) computes the headpositions and distance covered from recording onset (CTF only)
+%  3) computes the mean, max, min, and range of the signal amplitude
+%  4) detects trigger events
+%  5) detects jump artifacts
+%  6) computes the powerspectrum
+%  7) estimates the low-frequency (<2 Hz) and line noise (~50 Hz)
 %
 % Use as
 %   [info, timelock, freq, summary, headpos] = ft_qualitycheck(cfg)
-% where info contains the dataset properties, timelock the timelocked data, 
+% where info contains the dataset properties, timelock the timelocked data,
 % freq the powerspectra, summary the mean descriptives, and headpos the
 % headpositions throughout the recording
 %
@@ -37,7 +36,7 @@ function [varargout] = ft_qualitycheck(cfg)
 
 % Copyright (C) 2010-2011, Arjen Stolk, Bram Daams, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -55,17 +54,20 @@ function [varargout] = ft_qualitycheck(cfg)
 %
 % $Id:%
 
-revision = '$Id$';
+% these are used by the ft_preamble/ft_postamble function and scripts
+ft_revision = '$Id$';
+ft_nargin   = nargin;
+ft_nargout  = nargout;
 
 % do the general setup of the function
 ft_defaults
 ft_preamble init
+ft_preamble debug
 ft_preamble provenance
 ft_preamble trackconfig
-ft_preamble debug
 
-% the abort variable is set to true or false in ft_preamble_init
-if abort
+% the ft_abort variable is set to true or false in ft_preamble_init
+if ft_abort
   return
 end
 
@@ -86,6 +88,7 @@ if strcmp(cfg.analyze,'yes')
   cfg   = ft_checkconfig(cfg, 'dataset2files', 'yes'); % translate into datafile+headerfile
   
   % these will be replaced by more appropriate values
+  info.filename    = cfg.dataset;
   info.datasetname = 'unknown';
   info.starttime   = 'unknown';
   info.startdate   = 'unknown';
@@ -111,12 +114,11 @@ if strcmp(cfg.analyze,'yes')
   cfgdef                      = [];
   cfgdef.dataset              = cfg.dataset;
   cfgdef.trialdef.triallength = 10;
-  %cfgdef.trialdef.ntrials     = 3;
   cfgdef.continuous           = 'yes';
   cfgdef                      = ft_definetrial(cfgdef);
   ntrials                     = size(cfgdef.trl,1)-1; % remove last trial
   timeunit                    = cfgdef.trialdef.triallength;
-   
+  
   % channelselection for jump detection (all) and for FFT (brain)
   if ismeg
     allchans                   = ft_channelselection({'MEG','MEGREF'}, info.hdr.label);
@@ -126,6 +128,11 @@ if strcmp(cfg.analyze,'yes')
     jumpthreshold              = 1e-10;
   elseif iseeg
     allchans                   = ft_channelselection('EEG', info.hdr.label);
+    if isempty(allchans)
+      % some EEG systems and data files use non-standard channel names that are not detected automatically
+      ft_warning('no EEG channels detected, selecting all channels');
+      allchans = info.hdr.label;
+    end
     chans                      = allchans;  % brain
     allchanindx                = match_str(info.hdr.label, allchans);
     chanindx                   = match_str(chans, allchans);
@@ -148,13 +155,13 @@ if strcmp(cfg.analyze,'yes')
     headpos.label  = {'Nx';'Ny';'Nz';'Lx';'Ly';'Lz';'Rx';'Ry';'Rz'};
     headpos.avg    = NaN(length(headpos.label), ntrials);
     headpos.grad   = info.hdr.grad;
-   
+    
     if numel(cat(1,Nx,Ny,Nz,Lx,Ly,Lz,Rx,Ry,Rz))==9
       hasheadpos = true;
     else
       hasheadpos = false;
     end
-  
+    
   end % if
   
   % analysis settings
@@ -193,13 +200,13 @@ if strcmp(cfg.analyze,'yes')
   summary.avg     = NaN(length(summary.label), ntrials); % updated in loop
   
   % try add gradiometer info
-  if isfield(info.hdr, 'grad'), 
+  if isfield(info.hdr, 'grad')
     timelock.grad = info.hdr.grad;
     freq.grad     = info.hdr.grad;
     summary.grad  = info.hdr.grad;
   end
   
-   
+  
   % process trial by trial
   for t = 1:ntrials
     fprintf('analyzing trial %s of %s \n', num2str(t), num2str(ntrials));
@@ -293,11 +300,10 @@ if strcmp(cfg.visualize, 'yes')
     fprintf('visualizing %s of %s \n', num2str(p), num2str(nplots));
     toi = [p*cfg.plotunit-(cfg.plotunit-5) p*cfg.plotunit-5]; % select 1-hour chunks
     
-    tmpcfg.toi = toi;
-    temp_timelock = ft_selectdata(tmpcfg, timelock);
-    temp_timelock.cfg = cfg; % be sure to add the cfg here
-    temp_freq     = ft_selectdata(tmpcfg, freq);
-    temp_summary  = ft_selectdata(tmpcfg, summary);
+    tmpcfg.latency = toi;
+    temp_timelock  = ft_selectdata(tmpcfg, timelock);
+    temp_freq      = ft_selectdata(tmpcfg, freq);
+    temp_summary   = ft_selectdata(tmpcfg, summary);
     if exist('headpos','var')
       temp_headpos  = ft_selectdata(tmpcfg, headpos);
       draw_figure(info, temp_timelock, temp_freq, temp_summary, temp_headpos, toi);
@@ -416,11 +422,19 @@ elseif nargin == 5
 end
 
 % determine whether it is EEG or MEG
-try
-[iseeg, ismeg, isctf, fltp] = filetyper(timelock.cfg.dataset);
-catch % in case the input is a matfile (and the dataset field does not exist): ugly workaround
-  [iseeg, ismeg, isctf, fltp] = filetyper(headpos.cfg.dataset);
+if isfield(info, 'filename') % supported as of January 2018
+  filename = info.filename;
+elseif isfield(timelock.cfg, 'dataset')
+  filename = timelock.cfg.dataset;
+elseif isfield(info.hdr.orig, 'FileName')
+  filename = info.hdr.orig.FileName;
+elseif exist('headpos','var') && isfield(headpos.cfg.previous, 'dataset')
+  filename = headpos.cfg.previous.dataset;
+else
+  error('could not determine the filename');
 end
+[iseeg, ismeg, isctf, fltp] = filetyper(filename);
+
 if ismeg
   scaling = 1e15; % assuming data is in T and needs to become fT
   powscaling = scaling^2;
@@ -693,7 +707,7 @@ h.SpectrumAxes = axes(...
   'Position',[.15 .2 .8 .7]);
 
 % plot powerspectrum
-loglog(h.SpectrumAxes, freq.freq, squeeze(mean(mean(freq.powspctrm,1),3))*powscaling,'r','LineWidth',2);
+loglog(h.SpectrumAxes, freq.freq, mean(mean(freq.powspctrm,1),3)*powscaling,'r','LineWidth',2);
 xlabel(h.SpectrumAxes, 'Frequency [Hz]');
 ylabel(h.SpectrumAxes, ['Power [' ylab '^2/Hz]']);
 
@@ -750,7 +764,7 @@ if ismeg
   cfgtopo.colorbar         = 'no';
   cfgtopo.comment          = 'no';
   cfgtopo.style            = 'blank';
-  cfgtopo.layout           = ft_prepare_layout(timelock);
+  cfgtopo.layout           = ft_prepare_layout([], timelock);
   cfgtopo.highlight        = 'on';
   cfgtopo.highlightsymbol  = '.';
   cfgtopo.highlightsize    = 14;
@@ -760,5 +774,6 @@ if ismeg
   data.dimord              = 'chan_freq';
   data.freq                = 1;
   axes(h.TopoMEG);
-  ft_topoplotTFR(cfgtopo, data); clear data;
+  ft_topoplotTFR(cfgtopo, data); % FIXME should this not be ft_topoplotER?
+  clear data
 end

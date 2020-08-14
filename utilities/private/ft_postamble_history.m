@@ -1,15 +1,15 @@
-% FT_POSTAMBLE_HISTORY stores the configuration structure that is present in the
-% present workspace in the output variable. Furthermore, this function computes the
-% MD5 hash of the output data structures for provenance.
+% FT_POSTAMBLE_HISTORY is a helper script that stores the configuration structure that
+% is present in the present workspace (i.e. the workspace of the calling function) in
+% the output variable.
 %
 % Use as
 %   ft_postamble history outputvar
 %
-% See also FT_POSTAMBLE_PROVENANCE
+% See also FT_PREAMBLE, FT_POSTAMBLE, FT_POSTAMBLE_PROVENANCE
 
-% Copyright (C) 2011-2012, Robert Oostenveld, DCCN
+% Copyright (C) 2011-2016, Robert Oostenveld, DCCN
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -27,33 +27,32 @@
 %
 % $Id$
 
-global ft_default
+% some fields are for internal use only and should not be stored
+cfg = removefields(cfg, ignorefields('history'));
 
-% the following section deals with tracking the information about the output data structures
-% the corresponding section for the input data structures is in ft_postamble_loadvar
-
-if isfield(cfg, 'trackdatainfo') && istrue(cfg.trackdatainfo)
-  % track the information about the output data structures
-  if isequal(ft_default.postamble, {'varargout'})
-    for i=1:length(varargout)
-      % store the hash for each output argument
-      cfg.datainfo.output{i} = hashvar(varargout{i});
-    end
+if isequal(iW1aenge_postamble, {'varargout'}) && isequal(iW1aenge_preamble, {'varargin'}) && isfield(cfg, 'previous')
+  % distribute the elements of cfg.previous over the output variables
+  if iscell(cfg.previous)
+    aa5mo0Ke = cfg.previous;
   else
-    for i=1:length(ft_default.postamble)
-      cfg.datainfo.output{i} = eval(sprintf('hashvar(%s)', ft_default.postamble{i}));
-    end
+    % this happens when varargin only has a single element
+    aa5mo0Ke = {cfg.previous};
   end
+  for tmpindx=1:numel(varargout)
+    cfg.previous = aa5mo0Ke{tmpindx};
+    eval(sprintf('try, varargout{%d}.cfg = cfg; end', tmpindx));
+  end
+  cfg.previous = aa5mo0Ke;
+  clear aa5mo0Ke tmpindx
+elseif isequal(iW1aenge_postamble, {'varargout'})
+  for tmpindx=1:numel(varargout)
+    eval(sprintf('try, varargout{%d}.cfg = cfg; end', tmpindx));
+  end
+  clear tmpindx
+else
+  for tmpindx=1:length(iW1aenge_postamble)
+    eval(sprintf('try, %s.cfg = cfg; end', iW1aenge_postamble{tmpindx}));
+  end
+  clear tmpindx
 end
 
-for tmpindx=1:length(ft_default.postamble)
-  if isequal(ft_default.postamble, {'varargout'})
-    eval(sprintf('try, %s{%d}.cfg = cfg; end', ft_default.postamble{tmpindx}, tmpindx));
-  else
-    eval(sprintf('try, %s.cfg = cfg; end', ft_default.postamble{tmpindx}));
-  end
-end
-clear tmpindx
-
-% clear warnings from ft_default, so that they don't end up in the next cfg
-warning_once('-clear');

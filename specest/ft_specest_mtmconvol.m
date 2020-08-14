@@ -4,10 +4,11 @@ function [spectrum,ntaper,freqoi,timeoi] = ft_specest_mtmconvol(dat, time, varar
 % multiplication in the frequency domain.
 %
 % Use as
-%   [spectrum,freqoi,timeoi] = ft_specest_mtmconvol(dat,time,...)
-% where
+%   [spectrum,ntaper,freqoi,timeoi] = ft_specest_mtmconvol(dat,time,...)
+% where input
 %   dat       = matrix of chan*sample
 %   time      = vector, containing time in seconds for each sample
+% and output
 %   spectrum  = matrix of ntaper*chan*freqoi*timeoi of fourier coefficients
 %   ntaper    = vector containing the number of tapers per freqoi
 %   freqoi    = vector of frequencies in spectrum
@@ -30,7 +31,7 @@ function [spectrum,ntaper,freqoi,timeoi] = ft_specest_mtmconvol(dat, time, varar
 
 % Copyright (C) 2010, Donders Institute for Brain, Cognition and Behaviour
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -72,20 +73,19 @@ end
 
 % throw errors for required input
 if isempty(tapsmofrq) && strcmp(taper, 'dpss')
-  error('you need to specify tapsmofrq when using dpss tapers')
+  ft_error('you need to specify tapsmofrq when using dpss tapers')
 end
 if isempty(timwin)
-  error('you need to specify timwin')
+  ft_error('you need to specify timwin')
 elseif (length(timwin) ~= length(freqoi) && ~strcmp(freqoi,'all'))
-  error('timwin should be of equal length as freqoi')
+  ft_error('timwin should be of equal length as freqoi')
 end
 
 % Set n's
-[nchan,ndatsample] = size(dat);
+[nchan, ndatsample] = size(dat);
 
 % This does not work on integer data
-typ = class(dat);
-if ~strcmp(typ, 'double') && ~strcmp(typ, 'single')
+if ~isa(dat, 'double') && ~isa(dat, 'single')
   dat = cast(dat, 'double');
 end
 
@@ -100,7 +100,7 @@ dattime = ndatsample / fsample; % total time in seconds of input data
 
 % Zero padding
 if round(pad * fsample) < ndatsample
-  error('the padding that you specified is shorter than the data');
+  ft_error('the padding that you specified is shorter than the data');
 end
 if isempty(pad) % if no padding is specified padding is equal to current data length
   pad = dattime;
@@ -136,13 +136,13 @@ if isnumeric(freqoiinput)
   % check whether padding is appropriate for the requested frequency resolution
   rayl = 1/endtime;
   if any(rem(freqoiinput,rayl))
-    warning_once('padding not sufficient for requested frequency resolution, for more information please see the FAQs on www.ru.nl/neuroimaging/fieldtrip');
+    ft_warning('padding not sufficient for requested frequency resolution, for more information please see the FAQs on www.ru.nl/neuroimaging/fieldtrip');
   end
   if numel(freqoiinput) ~= numel(freqoi) % freqoi will not contain double frequency bins when requested
-    warning_once('output frequencies are different from input frequencies, multiples of the same bin were requested but not given');
+    ft_warning('output frequencies are different from input frequencies, multiples of the same bin were requested but not given');
   else
     if any(abs(freqoiinput-freqoi) >= eps*1e6)
-      warning_once('output frequencies are different from input frequencies');
+      ft_warning('output frequencies are different from input frequencies');
     end
   end
 end
@@ -163,10 +163,10 @@ end
 % throw a warning if input timeoi is different from output timeoi
 if isnumeric(timeoiinput)
   if numel(timeoiinput) ~= numel(timeoi) % timeoi will not contain double time-bins when requested
-    warning_once('output time-bins are different from input time-bins, multiples of the same bin were requested but not given');
+    ft_warning('output time-bins are different from input time-bins, multiples of the same bin were requested but not given');
   else
     if any(abs(timeoiinput-timeoi) >= eps*1e6) 
-      warning_once('output time-bins are different from input time-bins');
+      ft_warning('output time-bins are different from input time-bins');
     end
   end
 end
@@ -198,7 +198,7 @@ else
         
         % give error/warning about number of tapers
         if isempty(tap)
-          error('%.3f Hz: datalength to short for specified smoothing\ndatalength: %.3f s, smoothing: %.3f Hz, minimum smoothing: %.3f Hz',freqoi(ifreqoi), timwinsample(ifreqoi)/fsample,tapsmofrq(ifreqoi),fsample/timwinsample(ifreqoi));
+          ft_error('%.3f Hz: datalength to short for specified smoothing\ndatalength: %.3f s, smoothing: %.3f Hz, minimum smoothing: %.3f Hz',freqoi(ifreqoi), timwinsample(ifreqoi)/fsample,tapsmofrq(ifreqoi),fsample/timwinsample(ifreqoi));
         elseif size(tap,1) == 1
           disp([num2str(freqoi(ifreqoi)) ' Hz: WARNING: using only one taper for specified smoothing'])
         end
@@ -268,7 +268,7 @@ else
         %       else
         %         line([ceil(tline) ceil(tline)],[-max(abs(wavelet)) max(abs(wavelet))],'color','g','linestyle','--');
         %         line([floor(tline) floor(tline)],[-max(abs(wavelet)) max(abs(wavelet))],'color','g','linestyle','--');
-        %       end;
+        %       end
         %       subplot(2,1,2);
         %       plot(angle(wavelet),'color','g');
         %       if mod(tline,2)==0,
@@ -310,7 +310,7 @@ switch dimord
         if itap > ntaper(ifreqoi)
           spectrum{itap,ifreqoi} = complex(nan(nchan,ntimeboi));
         else                                
-          dum = fftshift(ifft(datspectrum .* repmat(wltspctrm{ifreqoi}(itap,:),[nchan 1]), [], 2),2);
+          dum = fftshift(ifft(datspectrum .* repmat(wltspctrm{ifreqoi}(itap,:),[nchan 1]), [], 2),2); % fftshift is necessary to implement zero-phase/acyclic/acausal convolution (either here, or the wavelet should be wrapped around sample=0)
           tmp = complex(nan(nchan,ntimeboi));
           tmp(:,reqtimeboiind) = dum(:,reqtimeboi);
           tmp = tmp .* sqrt(2 ./ timwinsample(ifreqoi));
@@ -348,7 +348,7 @@ switch dimord
         reqtimeboi       = timeboi(reqtimeboiind);
         
         % compute datspectrum*wavelet, if there are reqtimeboi's that have data
-        dum = fftshift(ifft(datspectrum .* repmat(wltspctrm{ifreqoi}(itap,:),[nchan 1]), [], 2),2);
+        dum = fftshift(ifft(datspectrum .* repmat(wltspctrm{ifreqoi}(itap,:),[nchan 1]), [], 2),2); % fftshift is necessary to implement zero-phase/acyclic/acausal convolution (either here, or the wavelet should be wrapped around sample=0)
         tmp = complex(nan(nchan,ntimeboi),nan(nchan,ntimeboi));
         tmp(:,reqtimeboiind) = dum(:,reqtimeboi);
         tmp = tmp .* sqrt(2 ./ timwinsample(ifreqoi));
@@ -420,7 +420,7 @@ previous_wltspctrm = wltspctrm;
 %
 %       % compute datspectrum*wavelet, if there are reqtimeboi's that have data
 %       if ~isempty(reqtimeboi)
-%         dum = fftshift(ifft(datspectrum(ichan,:) .* wltspctrm{ifreqoi}(itap,:),[],2)); % fftshift is necessary because of post zero-padding, not necessary when pre-padding
+%         dum = fftshift(ifft(datspectrum(ichan,:) .* wltspctrm{ifreqoi}(itap,:),[],2)); 
 %         %spectrum(tapfreqind,ichan,reqtimeboiind) = dum(reqtimeboi);
 %         tmp = complex(nan(1,ntimeboi));
 %         tmp(reqtimeboiind) = dum(reqtimeboi);

@@ -1,5 +1,5 @@
 % FT_POSTAMBLE_TRACKCONFIG is a helper script that calls ft_checkconfig to switch the
-% (optional) configuration tracking off and to report on the used and unused options
+% optional configuration tracking off and to report on the used and unused options
 % and/or clean up the output cfg structure. This should be used together with
 % FT_PREAMBLE_TRACKCONFIG.
 %
@@ -8,11 +8,11 @@
 %   ... regular code goes here ...
 %   ft_postamble trackconfig
 %
-% See also FT_PREAMBLE_TRACKCONFIG
+% See also FT_PREAMBLE, FT_POSTAMBLE, FT_PREAMBLE_TRACKCONFIG
 
 % Copyright (C) 2011-2012, Robert Oostenveld, DCCN
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -29,10 +29,6 @@
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
 % $Id$
-
-% otherwise the empty field would end up in the output cfg
-global ft_default
-ft_default = rmfield(ft_default, 'postamble');
 
 % accessing this field here is needed for the configuration tracking
 % by accessing it once, it will not be removed from the output cfg
@@ -51,6 +47,3 @@ end
 
 % get the output cfg
 cfg = ft_checkconfig(cfg, 'trackconfig', 'off', 'checksize', 'yes');
-
-% the calling ft_postamble expects it to be present
-ft_default.postamble = {};

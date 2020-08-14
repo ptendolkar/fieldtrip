@@ -20,7 +20,7 @@ function [source] = loreta2fieldtrip(filename, varargin)
 
 % Copyright (C) 2006, Vladimir Litvak
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -38,11 +38,8 @@ function [source] = loreta2fieldtrip(filename, varargin)
 %
 % $Id$
 
-revision = '$Id$';
-
 % do the general setup of the function
 ft_defaults
-ft_preamble callinfo
 
 is_txt = ft_filetype(filename, 'ascii_txt'); %FIXME text file only implemented for slor, don't know what text files look for for old loreta
 
@@ -62,7 +59,7 @@ if ft_filetype(filename, 'loreta_slor') || is_txt && strcmp(filename(end-7:end-4
   %   source.xgrid =  -70:5:70;
   %   source.ygrid = -100:5:65;
   %   source.zgrid =  -45:5:70;
-  
+
   %Note2, ingie: I'm assuming that the above is where the INSIDE of the source
   % runs between, looking at the data and the Loreta-Key program, this makes
   % a lot of sense. I based the below source.transform on this.
@@ -76,7 +73,7 @@ elseif ft_filetype(filename, 'loreta_lorb')
   source.zgrid =  -41:7:71;
   source.transform = eye(4);      % FIXME the transformation matrix should be assigned properly
 else
-  error('unsupported LORETA format');
+  ft_error('unsupported LORETA format');
 end
 
 
@@ -100,9 +97,9 @@ if ~is_txt
     fseek(fid, 4*voxnumber*(timeframe-1), 'bof');
     activity = fread(fid, [voxnumber 1], 'float=>single');
   else
-    error('you can read either one timeframe, or the complete timecourse');
-  end  
-  fclose(fid);  
+    ft_error('you can read either one timeframe, or the complete timecourse');
+  end
+  fclose(fid);
 else
   % read with textfile
   activity = dlmread(filename);
@@ -112,13 +109,13 @@ else
     end
     Ntime = size(activity,2);
   else
-    error('expect column or row to be length 2394 or 6239')
+    ft_error('expect column or row to be length 2394 or 6239')
   end
   if isempty(timeframe)
   else
     % read timeframe
     activity = activity(:,timeframe);
-  end  
+  end
 end
 
 fprintf('file %s contains %d timepoints\n', filename, Ntime);
@@ -139,13 +136,3 @@ else
   source.mom  = activity(lorind);
   fprintf('returning the activity at one timepoint as a single distribution of power\n');
 end
-
-% add the options used here to the configuration
-cfg = [];
-cfg.timeframe = timeframe;
-cfg.filename  = filename;
-
-% do the general cleanup and bookkeeping at the end of the function
-ft_postamble callinfo
-ft_postamble history source
-

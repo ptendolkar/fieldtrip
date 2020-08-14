@@ -2,16 +2,17 @@ function test_tutorial_natmeg_statistics
 
 % WALLTIME 00:20:00
 % MEM 4gb
+% DEPENDENCY
 
 % this script executes the MATLAB content from
-% http://fieldtrip.fcdonders.nl/tutorial/natmeg/statistics
+% http://www.fieldtriptoolbox.org/tutorial/natmeg/statistics
 %
 % it corresponds to the wiki version of 7 October 2014
 
 clear all
 close all
 
-cd(dccnpath('/home/common/matlab/fieldtrip/data/ftp/tutorial/natmeg'));
+cd(dccnpath('/home/common/matlab/fieldtrip/data/ftp/workshop/natmeg'));
 
 cfg = [];
 cfg.dataset = 'oddball1_mc_downsampled.fif';

@@ -19,7 +19,7 @@ function [timelock] = ft_spiketriggeredaverage(cfg, data)
 
 % Copyright (C) 2008, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -37,12 +37,15 @@ function [timelock] = ft_spiketriggeredaverage(cfg, data)
 %
 % $Id$
 
-revision = '$Id$';
+% these are used by the ft_preamble/ft_postamble function and scripts
+ft_revision = '$Id$';
+ft_nargin   = nargin;
+ft_nargout  = nargout;
 
 % do the general setup of the function
 ft_defaults
 ft_preamble init
-ft_preamble callinfo
+ft_preamble provenance data
 ft_preamble trackconfig
 
 % check input data structure
@@ -69,18 +72,16 @@ cfg = ft_checkopt(cfg, 'feedback', 'char', {'yes', 'no'});
 cfg = ft_checkopt(cfg, 'latency', {'char', 'ascendingdoublebivector'});
 cfg = ft_checkopt(cfg, 'trials', {'char', 'doublevector', 'logical'}); 
 
-cfg = ft_checkconfig(cfg, 'allowed', {'timwin', 'spikechannel', 'channel', 'keeptrials', 'feedback', 'latency', 'trials', 'warning', 'progress'});
+cfg = ft_checkconfig(cfg, 'allowed', {'timwin', 'spikechannel', 'channel', 'keeptrials', 'feedback', 'latency', 'trials'});
 
 % autodetect the spike channels
 ntrial = length(data.trial);
-nchans  = length(data.label);
-spikechan = zeros(nchans,1);
+nchans = length(data.label);
+sc = zeros(nchans,ntrial);
 for i=1:ntrial
-  for j=1:nchans
-    spikechan(j) = spikechan(j) + all(data.trial{i}(j,:)==0 | data.trial{i}(j,:)==1 | data.trial{i}(j,:)==2);
-  end
+    sc(:,i) = all(mod(data.trial{i},1) == 0,2);
 end
-spikechan = (spikechan==ntrial);
+spikechan = (sum(sc,2)==ntrial);
 
 % determine the channels to be averaged
 cfg.channel = ft_channelselection(cfg.channel, data.label);
@@ -107,7 +108,7 @@ end
 % get the number of trials or change DATA according to cfg.trials
 if  strcmp(cfg.trials,'all')
   cfg.trials = 1:length(data.trial);
-elseif islogical(cfg.trials)
+elseif islogical(cfg.trials) || all(cfg.trials==0 | cfg.trials==1)
   cfg.trials = find(cfg.trials);
 end
 cfg.trials = sort(cfg.trials(:));
@@ -241,6 +242,6 @@ end
 
 % do the general cleanup and bookkeeping at the end of the function
 ft_postamble trackconfig
-ft_postamble callinfo
-ft_postamble previous data
-ft_postamble history timelock
+ft_postamble previous   data
+ft_postamble provenance timelock
+ft_postamble history    timelock

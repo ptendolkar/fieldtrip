@@ -1,7 +1,7 @@
 function [argout, optout] = fexec(argin, optin)
 
 % FEXEC is the low-level function that executes the job on the engine or
-% slave. It also tries to change the path and pwd to those on the master
+% worker. It also tries to change the path and pwd to those on the controller
 % and it catches and deals with any errors in the code that is executed.
 %
 % This function should not be called directly.
@@ -39,6 +39,11 @@ optout = {};
 lastwarn('');
 lasterr('');
 
+% these will be determined later on, but are set here to empty for better error handling
+controllerid = [];
+timallow = [];
+memallow = [];
+
 % there are many reasons why the execution may fail, hence the elaborate try-catch
 try
   
@@ -63,11 +68,11 @@ try
   
   % check whether a watchdog should be set
   % this only applies to the peer distributed computing system
-  masterid = ft_getopt(optin, 'masterid');
+  controllerid = ft_getopt(optin, 'controllerid');
   timallow = ft_getopt(optin, 'timallow');
   memallow = []; % ft_getopt(optin, 'memallow');
-  if ~isempty(masterid) || ~isempty(timallow) || ~isempty(memallow)
-    watchdog(masterid, timallow, memallow);
+  if ~isempty(controllerid) || ~isempty(timallow) || ~isempty(memallow)
+    watchdog(controllerid, timallow, memallow);
   end
   
   % try setting the same path directory
@@ -85,20 +90,20 @@ try
   % seed the random number generator
   option_randomseed = ft_getopt(optin, 'randomseed');
   if ~isempty(option_randomseed)
-    if matlabversion(-inf, '2008a')
-      % in older Matlab versions it worked like this
-      rand ('seed', option_randomseed);
-      randn('seed', option_randomseed);
-    elseif matlabversion('2008b', '2011b')
-      % this is according to http://www.mathworks.com/help/techdoc/math/bsn94u0-1.html
-      % and is needed to avoid a warning about Using 'seed' to set RAND's internal state causes RAND, RANDI, and RANDN to use legacy random number generators.
-      s = RandStream('mcg16807', 'Seed', option_randomseed);
-      RandStream.setDefaultStream(s);
-    elseif matlabversion('2012a', inf)
+    if ft_platform_supports('RandStream.setGlobalStream')
       % version 2012a gives a warning that RandStream.setDefaultStream will be removed in the future
       % and that RandStream.setGlobalStream should be used instead
       s = RandStream('mcg16807', 'Seed', option_randomseed);
       RandStream.setGlobalStream(s);
+    elseif ft_platform_supports('RandStream.setDefaultStream')
+      % this is according to http://www.mathworks.com/help/techdoc/math/bsn94u0-1.html
+      % and is needed to avoid a warning about Using 'seed' to set RAND's internal state causes RAND, RANDI, and RANDN to use legacy random number generators.
+      s = RandStream('mcg16807', 'Seed', option_randomseed);
+      RandStream.setDefaultStream(s);
+    else
+      % in older Matlab versions, and in GNU Octave, it works like this
+      rand ('seed', option_randomseed);
+      randn('seed', option_randomseed);
     end
   end
   
@@ -240,7 +245,7 @@ close all hidden;
 clear global
 
 % clear the optional watchdog, which is loaded into memory as a mex file
-if ~isempty(masterid) || ~isempty(timallow) || ~isempty(memallow)
+if ~isempty(controllerid) || ~isempty(timallow) || ~isempty(memallow)
   watchdog(0,0,0); % this is required to unlock it from memory
 end
 

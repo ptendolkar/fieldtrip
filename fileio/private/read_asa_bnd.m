@@ -1,11 +1,11 @@
-function bnd = read_asa_bnd(fn);
+function bnd = read_asa_bnd(fn)
 
 % READ_ASA_BND reads an ASA boundary triangulation file
 % converting the units of the vertices to mm
 
 % Copyright (C) 2002, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -31,7 +31,7 @@ pnt = read_asa(fn, 'Positions', '%f');
 if any(size(pnt)~=[Npnt,3])
   pnt_file = read_asa(fn, 'Positions', '%s');
   [path, name, ext] = fileparts(fn);
-  fid = fopen(fullfile(path, pnt_file), 'rb', 'ieee-le');
+  fid = fopen_or_error(fullfile(path, pnt_file), 'rb', 'ieee-le');
   pnt = fread(fid, [3,Npnt], 'float')';
   fclose(fid);
 end
@@ -40,7 +40,7 @@ tri = read_asa(fn, 'Polygons', '%f');
 if any(size(tri)~=[Ntri,3])
   tri_file = read_asa(fn, 'Polygons', '%s');
   [path, name, ext] = fileparts(fn);
-  fid = fopen(fullfile(path, tri_file), 'rb', 'ieee-le');
+  fid = fopen_or_error(fullfile(path, tri_file), 'rb', 'ieee-le');
   tri = fread(fid, [3,Ntri], 'int32')';
   fclose(fid);
 end
@@ -52,7 +52,7 @@ elseif strcmpi(Unit,'cm')
 elseif strcmpi(Unit,'m')
   pnt   = 1000*pnt;
 else
-  error(sprintf('Unknown unit of distance for triangulated boundary (%s)', Unit));
+  ft_error(sprintf('Unknown unit of distance for triangulated boundary (%s)', Unit));
 end
 
 bnd.pnt = pnt;

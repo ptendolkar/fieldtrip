@@ -1,6 +1,6 @@
 function [dat] = read_nexstim_nxe(filename, begsample, endsample, chanindx)
 
-% READ_NEXSTIM_NXE reads specified samples from a NXE continous datafile
+% READ_NEXSTIM_NXE reads specified samples from a NXE continuous datafile
 %
 % Use as
 %   [hdr] = read_nexstim_nxe(filename)
@@ -27,7 +27,7 @@ function [dat] = read_nexstim_nxe(filename, begsample, endsample, chanindx)
 %
 % Copyright (C) 2007, Vladimir Litvak
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -118,7 +118,7 @@ if nargin==1
     % it is continuous data, therefore append all records in one trial
     hdr.nTrials     = 1;
 
-    fid=fopen(filename,'r','l');
+    fid=fopen_or_error(filename,'r','l');
     fseek(fid,0,'eof');
     numBytes = ftell(fid);
     hdr.nSamples = (numBytes/2)/hdr.nChans;
@@ -140,7 +140,7 @@ else
 
     numChannels = 64;
 
-    fid = fopen(filename,'r','l');
+    fid = fopen_or_error(filename,'r','l');
     fseek(fid, 2*numChannels*(begsample-1),'bof');
     data = fread(fid,[numChannels endsample-begsample+1],'short');
     fclose(fid);
@@ -155,4 +155,3 @@ else
 
     dat = data(chanindx,:);
 end
-

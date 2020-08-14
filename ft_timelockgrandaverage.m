@@ -10,17 +10,17 @@ function [grandavg] = ft_timelockgrandaverage(cfg, varargin)
 %   avg1..N are the ERF/ERP averages as obtained from FT_TIMELOCKANALYSIS
 %
 % and cfg is a configuration structure with
-%  cfg.channel        = Nx1 cell-array with selection of channels (default = 'all'),
-%                       see FT_CHANNELSELECTION for details
-%  cfg.latency        = [begin end] in seconds or 'all' (default = 'all')
-%  cfg.keepindividual = 'yes' or 'no' (default = 'no')
-%  cfg.normalizevar   = 'N' or 'N-1' (default = 'N-1')
-%  cfg.method         = 'across' (default) or 'within', see below.
-%  cfg.parameter      = string or cell-array indicating which
+%   cfg.channel        = Nx1 cell-array with selection of channels (default = 'all'),
+%                        see FT_CHANNELSELECTION for details
+%   cfg.latency        = [begin end] in seconds or 'all' (default = 'all')
+%   cfg.keepindividual = 'yes' or 'no' (default = 'no')
+%   cfg.normalizevar   = 'N' or 'N-1' (default = 'N-1')
+%   cfg.method         = 'across' (default) or 'within', see below.
+%   cfg.parameter      = string or cell-array indicating which
 %                        parameter to average. default is set to
 %                        'avg', if it is present in the data.
 %
-% If cfg.method = 'across', an plain average is performed, i.e. the
+% If cfg.method = 'across', a plain average is performed, i.e. the
 % requested parameter in each input argument is weighted equally in the
 % average. This is useful when averaging across subjects. The
 % variance-field will contain the variance across the parameter of
@@ -39,14 +39,14 @@ function [grandavg] = ft_timelockgrandaverage(cfg, varargin)
 % file on disk and/or the output data will be written to a *.mat file. These mat
 % files should contain only a single variable, corresponding with the
 % input/output structure. For this particular function, the input should be
-% structured as a cell array.
+% structured as a cell-array.
 %
 % See also FT_TIMELOCKANALYSIS, FT_TIMELOCKSTATISTICS, FT_TIMELOCKBASELINE
 
 % Copyright (C) 2003-2006, Jens Schwarzbach
 % Copyright (C) 2013, Burkhard Maess
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -64,18 +64,21 @@ function [grandavg] = ft_timelockgrandaverage(cfg, varargin)
 %
 % $Id$
 
-revision = '$Id$';
+% these are used by the ft_preamble/ft_postamble function and scripts
+ft_revision = '$Id$';
+ft_nargin   = nargin;
+ft_nargout  = nargout;
 
 % do the general setup of the function
 ft_defaults
 ft_preamble init
-ft_preamble provenance
-ft_preamble trackconfig
 ft_preamble debug
 ft_preamble loadvar varargin
+ft_preamble provenance varargin
+ft_preamble trackconfig
 
-% the abort variable is set to true or false in ft_preamble_init
-if abort
+% the ft_abort variable is set to true or false in ft_preamble_init
+if ft_abort
   return
 end
 
@@ -86,18 +89,18 @@ end
 
 % check if the input data is valid for this function
 for i=1:length(varargin)
-  varargin{i} = ft_checkdata(varargin{i}, 'datatype', 'timelock', 'feedback', 'no');
-  if isfield(varargin{i},'trial') && isfield(varargin{i},'avg');% see bug2372 (dieloz)
+  if isfield(varargin{i},'trial') && isfield(varargin{i},'avg') % see bug2372 (dieloz)
     varargin{i} = rmfield(varargin{i},'trial');
-    warning('depreciating trial field: using the avg to compute the grand average');
-    if strcmp(varargin{i}.dimord,'rpt_chan_time');
+    ft_warning('depreciating trial field: using the avg to compute the grand average');
+    if strcmp(varargin{i}.dimord,'rpt_chan_time')
       varargin{i}.dimord = 'chan_time';
     end
   else
-    if isfield(varargin{i},'trial') && ~isfield(varargin{i},'avg');
-      error('input dataset %d does not contain avg field: see ft_timelockanalysis', i);
+    if isfield(varargin{i},'trial') && ~isfield(varargin{i},'avg')
+      ft_error('input dataset %d does not contain avg field: see ft_timelockanalysis', i);
     end
   end
+  varargin{i} = ft_checkdata(varargin{i}, 'datatype', 'timelock', 'feedback', 'no');
 end
 
 % set the defaults
@@ -115,13 +118,13 @@ if iscell(cfg.parameter)
   cfg.parameter = cfg.parameter{1};
 end
 
-if strcmp(cfg.parameter,'trial');
-  error('not supporting averaging over the repetition dimension');
+if strcmp(cfg.parameter,'trial')
+  ft_error('not supporting averaging over the repetition dimension');
 end
 
 Nsubj    = length(varargin);
-dimord   = varargin{1}.dimord;
-hastime  = ~isempty(strfind(varargin{1}.dimord, 'time'));
+dimord   = getdimord(varargin{1}, cfg.parameter);
+hastime  = contains(dimord, 'time');
 hasdof   = isfield(varargin{1}, 'dof');
 
 if ischar(cfg.latency) && strcmp(cfg.latency, 'all')
@@ -133,7 +136,7 @@ else
 end
 
 % ensure that the data in all inputs has the same channels, time-axis, etc.
-tmpcfg = keepfields(cfg, {'parameter', 'channel', 'latency'});
+tmpcfg = keepfields(cfg, {'parameter', 'channel', 'latency', 'showcallinfo'});
 [varargin{:}] = ft_selectdata(tmpcfg, varargin{:});
 % restore the provenance information
 [cfg, varargin{:}] = rollback_provenance(cfg, varargin{:});
@@ -176,10 +179,10 @@ else % ~strcmp(cfg.keepindividual, 'yes')
           avgvar(s, :, :, :) = (varargin{s}.(cfg.parameter).^2).*varargin{s}.dof;
           % avgvar(s, :, :, :) = varargin{s}.var .* (varargin{s}.dof-1); % reversing the last div in ft_timelockanalysis
         else
-          avgvar(s, :, :, :) = zeros([datsiz]); % shall we remove the .var field from the structure under these conditions ?
+          avgvar(s, :, :, :) = zeros(datsiz); % shall we remove the .var field from the structure under these conditions ?
         end
       otherwise
-        error('unsupported value for cfg.method')
+        ft_error('unsupported value for cfg.method')
     end % switch
   end
   % average across subject dimension
@@ -189,7 +192,7 @@ else % ~strcmp(cfg.keepindividual, 'yes')
   % if strcmp(cfg.method, 'across')
   ResultVar      = reshape(sum(avgvar,1), datsiz)-reshape(sum(avgmat,1), datsiz).^2./ResultDOF;
   % else  % cfg.method = 'within'
-  % ResultVar      = squeeze(sum(avgvar,1)); % subtraction of means was done for each block already
+  % ResultVar      = reshape(sum(avgvar, 1), datsiz); % subtraction of means was done for each block already
   % end
   switch cfg.normalizevar
     case 'N-1'
@@ -216,10 +219,10 @@ switch cfg.method
   
   case 'across'
     if isfield(varargin{1}, 'grad') % positions are different between subjects
-      warning('discarding gradiometer information because it cannot be averaged');
+      ft_warning('discarding gradiometer information because it cannot be averaged');
     end
     if isfield(varargin{1}, 'elec') % positions are different between subjects
-      warning('discarding electrode information because it cannot be averaged');
+      ft_warning('discarding electrode information because it cannot be averaged');
     end
     
   case 'within'
@@ -234,19 +237,19 @@ switch cfg.method
     end
     
   otherwise
-    error('unsupported method "%s"', cfg.method);
+    ft_error('unsupported method "%s"', cfg.method);
 end
 
 if strcmp(cfg.keepindividual, 'yes')
-  grandavg.dimord = ['subj_',varargin{1}.dimord];
+  grandavg.dimord = ['subj_', dimord];
 else
-  grandavg.dimord = varargin{1}.dimord;
+  grandavg.dimord = dimord;
 end
 
 % do the general cleanup and bookkeeping at the end of the function
 ft_postamble debug
 ft_postamble trackconfig
-ft_postamble provenance
-ft_postamble previous varargin
-ft_postamble history grandavg
-ft_postamble savevar grandavg
+ft_postamble previous   varargin
+ft_postamble provenance grandavg
+ft_postamble history    grandavg
+ft_postamble savevar    grandavg

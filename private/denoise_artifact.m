@@ -7,7 +7,7 @@ function [params, s_new] = denoise_artifact(params, s, state)
 
 % Copyright (C) 2005, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -80,7 +80,7 @@ for i=1:numart
   sum = sum + s(:,begsmp(i):endsmp(i));
 end
 
-% averaging is not strictly neccessary, but conceptually nicer
+% averaging is not strictly necessary, but conceptually nicer
 sum = sum ./ numart;
 
 s_new = zeros(size(s));

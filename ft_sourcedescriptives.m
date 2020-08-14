@@ -22,7 +22,10 @@ function [source] = ft_sourcedescriptives(cfg, source)
 %   cfg.resolutionmatrix = 'yes' or 'no' (default = 'no')
 %   cfg.feedback         = 'no', 'text' (default), 'textbar', 'gui'
 %
-% The following option only applies to LCMV single-trial timecourses.
+% The following option only applies to timecourses.
+%   cfg.flipori          = 'yes' or 'no' (default = 'no')
+%
+% The following option only applies to single-trial timecourses.
 %   cfg.fixedori         = 'within_trials' or 'over_trials' (default = 'over_trials')
 %
 % If repeated trials are present that have undergone some sort of
@@ -43,7 +46,7 @@ function [source] = ft_sourcedescriptives(cfg, source)
 
 % Copyright (C) 2004-2015, Robert Oostenveld & Jan-Mathijs Schoffelen
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -61,37 +64,40 @@ function [source] = ft_sourcedescriptives(cfg, source)
 %
 % $Id$
 
-revision = '$Id$';
+% these are used by the ft_preamble/ft_postamble function and scripts
+ft_revision = '$Id$';
+ft_nargin   = nargin;
+ft_nargout  = nargout;
 
 % do the general setup of the function
 ft_defaults
 ft_preamble init
-ft_preamble provenance
-ft_preamble trackconfig
 ft_preamble debug
 ft_preamble loadvar source
+ft_preamble provenance source
+ft_preamble trackconfig
 
-% the abort variable is set to true or false in ft_preamble_init
-if abort
+% the ft_abort variable is set to true or false in ft_preamble_init
+if ft_abort
   return
 end
 
 % check if the input data is valid for this function
 % source = ft_checkdata(source, 'datatype', 'source', 'feedback', 'yes');
 
-cfg = ft_checkconfig(cfg, 'forbidden',   {'trials'});    % trial selection is not implented here, you may want to consider ft_selectdata
+% cfg = ft_checkconfig(cfg, 'forbidden',   {'trials'});    % trial selection is not implented here, you may want to consider ft_selectdata
 
 % DEPRECATED by roboos on 13 June 2013
-% see http://bugzilla.fcdonders.nl/show_bug.cgi?id=2199 for more details
+% see http://bugzilla.fieldtriptoolbox.org/show_bug.cgi?id=2199 for more details
 % support for this functionality can be removed at the end of 2013
 cfg = ft_checkconfig(cfg, 'deprecated',  {'transform'}); % please use ft_math instead
 
 % set the defaults
 cfg.transform        = ft_getopt(cfg, 'transform',        []);
-cfg.projectmom       = ft_getopt(cfg, 'projectmom',       'no');% if yes -> svdfft
+cfg.projectmom       = ft_getopt(cfg, 'projectmom',       'no'); % if yes -> svdfft
 cfg.numcomp          = ft_getopt(cfg, 'numcomp',          1);
-cfg.powmethod        = ft_getopt(cfg, 'powmethod',        []);% see below
-cfg.cohmethod        = ft_getopt(cfg, 'cohmethod',        []);% see below
+cfg.powmethod        = ft_getopt(cfg, 'powmethod',        []); % see below
+cfg.cohmethod        = ft_getopt(cfg, 'cohmethod',        []); % see below
 cfg.feedback         = ft_getopt(cfg, 'feedback',         'textbar');
 cfg.supmethod        = ft_getopt(cfg, 'supmethod',        'none');
 cfg.resolutionmatrix = ft_getopt(cfg, 'resolutionmatrix', 'no');
@@ -99,21 +105,40 @@ cfg.eta              = ft_getopt(cfg, 'eta',              'no');
 cfg.fa               = ft_getopt(cfg, 'fa',               'no');
 cfg.kurtosis         = ft_getopt(cfg, 'kurtosis',         'no');
 cfg.keeptrials       = ft_getopt(cfg, 'keeptrials',       'no');
+cfg.trials           = ft_getopt(cfg, 'trials',           'all');
 cfg.keepcsd          = ft_getopt(cfg, 'keepcsd',          'no');
 cfg.keepmom          = ft_getopt(cfg, 'keepmom',          'yes');
 cfg.keepnoisecsd     = ft_getopt(cfg, 'keepnoisecsd',     'no');
 cfg.keepnoisemom     = ft_getopt(cfg, 'keepnoisemom',     'yes');
 cfg.fwhm             = ft_getopt(cfg, 'fwhm',             'no');
 cfg.fwhmremovecenter = ft_getopt(cfg, 'fwhmremovecenter', 0);
+cfg.fwhmmethod       = ft_getopt(cfg, 'fwhmmethod',       'barnes');
+cfg.fwhmmaxdist      = ft_getopt(cfg, 'fwhmmaxdist',      []);
 cfg.fixedori         = ft_getopt(cfg, 'fixedori',         'over_trials');
+cfg.flipori          = ft_getopt(cfg, 'flipori',          'no');
 
-% only works for minimumnormestimate
+% only works for mne
 cfg.demean         = ft_getopt(cfg, 'demean',         'yes');
 cfg.baselinewindow = ft_getopt(cfg, 'baselinewindow', [-inf 0]);
 cfg.zscore         = ft_getopt(cfg, 'zscore',         'yes');
 
 zscore = strcmp(cfg.zscore, 'yes');
 demean = strcmp(cfg.demean, 'yes');
+
+if ischar(cfg.trials) && strcmp(cfg.trials,'all')
+  % do nothing
+elseif ischar(cfg.trials)
+  ft_error('only ''all'' is allowed for string input for cfg.trials');
+else
+  % check whether there's a trial field in the source structure, and
+  % subselect, otherwise error
+  if isfield(source, 'trial')
+    source.trial = source.trial(cfg.trials);
+    if isfield(source, 'cumtapcnt'), source.cumtapcnt = source.cumtapcnt(cfg.trials,:); end
+  else
+    ft_error('subselecting trials in ft_sourcedescriptives is currently only possible with a ''trial'' field');
+  end
+end
 
 % get desired method from source structure
 source.method = ft_getopt(source,'method',[]);
@@ -138,12 +163,12 @@ if strcmp(cfg.projectmom, 'yes')
   if isempty(cfg.powmethod)
     cfg.powmethod = 'regular'; % set the default
   elseif ~strcmp(cfg.powmethod, 'regular')
-    error('unsupported powmethod in combination with projectmom');
+    ft_error('unsupported powmethod in combination with projectmom');
   end
   if isempty(cfg.cohmethod)
-    cfg.cohmethod = 'regular';% set the default
+    cfg.cohmethod = 'regular'; % set the default
   elseif ~strcmp(cfg.cohmethod, 'regular')
-    error('unsupported cohmethod in combination with projectmom');
+    ft_error('unsupported cohmethod in combination with projectmom');
   end
 else
   if isempty(cfg.powmethod)
@@ -160,30 +185,33 @@ if isfield(cfg, 'singletrial'), cfg.keeptrials = cfg.singletrial;  end
 % do a validity check on the input data and specified options
 if strcmp(cfg.resolutionmatrix, 'yes')
   if ~isfield(source.avg, 'filter')
-    error('The computation of the resolution matrix requires keepfilter=''yes'' in sourceanalysis.');
+    ft_error('The computation of the resolution matrix requires keepfilter=''yes'' in sourceanalysis.');
   elseif ~isfield(source, 'leadfield')
-    error('The computation of the resolution matrix requires keepleadfield=''yes'' in sourceanalysis.');
+    ft_error('The computation of the resolution matrix requires keepleadfield=''yes'' in sourceanalysis.');
   end
 end
 
-if strcmp(cfg.fwhm, 'yes')
-  if ~isfield(source.avg, 'filter')
-    error('The computation of the fwhm requires keepfilter=''yes'' in sourceanalysis.');
-  end
+if istrue(cfg.fwhm) && ~isfield(source.avg, 'filter')
+  ft_error('computation of the fwhm requires keepfilter=''yes'' in sourceanalysis.');
 end
 
-if strcmp(cfg.eta, 'yes') && strcmp(cfg.cohmethod, 'svdfft'),
-  error('eta cannot be computed in combination with the application of svdfft');
+if istrue(cfg.eta) && strcmp(cfg.cohmethod, 'svdfft')
+  ft_error('eta cannot be computed in combination with the application of svdfft');
 end
 
-if strcmp(cfg.keeptrials, 'yes') && ~strcmp(cfg.supmethod, 'none'),
-  error('you cannot keep trials when you want to partialize something');
+if istrue(cfg.keeptrials) && ~strcmp(cfg.supmethod, 'none')
+  ft_error('you cannot keep trials when you want to partialize something');
+end
+
+if istrue(cfg.flipori) && ~istrue(cfg.projectmom)
+  ft_error('flipori requires projectmom=''yes''');
 end
 
 % set some flags for convenience
 isnoise    = isfield(source, 'avg') && isfield(source.avg, 'noisecsd');
 keeptrials = strcmp(cfg.keeptrials, 'yes');
 projectmom = strcmp(cfg.projectmom, 'yes');
+flipori    = strcmp(cfg.flipori, 'yes');
 
 % determine the subfunction used for computing power
 switch cfg.powmethod
@@ -196,19 +224,21 @@ switch cfg.powmethod
   case 'none'
     powmethodfun = [];
   otherwise
-    error('unsupported powmethod');
+    ft_error('unsupported powmethod');
 end
 
 % represent the selection of sources in the brain as a row-vector with indices
 insideindx = find(source.inside(:)');
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if ispccdata
   % the source reconstruction was computed using the pcc beamformer
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   
   Ndipole = size(source.pos,1);
   
   if ischar(source.avg.csdlabel{1}), source.avg.csdlabel = {source.avg.csdlabel}; end
-  if numel(source.avg.csdlabel)==1,
+  if numel(source.avg.csdlabel)==1
     source.avg.csdlabel = repmat(source.avg.csdlabel, [Ndipole 1]);
   end
   
@@ -220,13 +250,12 @@ if ispccdata
   
   % cannot handle reference channels and reference dipoles simultaneously
   if numel(refchansel)>0 && numel(refdipsel)>0
-    error('cannot simultaneously handle reference channels and reference dipole');
+    ft_error('cannot simultaneously handle reference channels and reference dipole');
   end
   
   % these are only used to count the number of reference/suppression dipoles and channels
   refsel = [refdipsel refchansel];
   supsel = [supdipsel supchansel];
-  
   
   % first do the projection of the moment, if requested
   if projectmom
@@ -235,7 +264,7 @@ if ispccdata
     for i=insideindx
       ft_progress(i/length(insideindx), 'projecting dipole moment %d/%d\n', i, length(insideindx));
       
-      if numel(source.avg.csdlabel)>1,
+      if numel(source.avg.csdlabel)>1
         dipsel     = find(strcmp(source.avg.csdlabel{i}, 'scandip'));
         refchansel = find(strcmp(source.avg.csdlabel{i}, 'refchan'));
         refdipsel  = find(strcmp(source.avg.csdlabel{i}, 'refdip'));
@@ -265,13 +294,13 @@ if ispccdata
       
       % create rotation-matrix
       rotmat = zeros(0, length(source.avg.csdlabel{i}));
-      if ~isempty(rmom),
+      if ~isempty(rmom)
         rotmat = [rotmat; rmom zeros(numel(refsel)+numel(supsel),1)];
       end
-      if ~isempty(rref),
+      if ~isempty(rref)
         rotmat = [rotmat; zeros(1, numel(dipsel)), rref, zeros(1,numel(refchansel)+numel(supsel))];
       end
-      if ~isempty(rsup),
+      if ~isempty(rsup)
         rotmat = [rotmat; zeros(1, numel(dipsel)+numel(refdipsel)), rsup, zeros(1,numel(refchansel)+numel(supchansel))];
       end
       for j=1:length(supchansel)
@@ -289,7 +318,7 @@ if ispccdata
       if isfield(source.avg, 'noisecsd'), source.avg.noisecsd{i} = rotmat * source.avg.noisecsd{i} * rotmat'; end
       % compute rotated filter
       if isfield(source.avg, 'filter'),   source.avg.filter{i}   = rotmat * source.avg.filter{i}; end
-      if isfield(source.avg, 'csdlabel'),
+      if isfield(source.avg, 'csdlabel')
         % remember what the interpretation is of all CSD output components
         scandiplabel = repmat({'scandip'}, 1, cfg.numcomp);          % only one dipole orientation remains
         refdiplabel  = repmat({'refdip'},  1, length(refdipsel)>0);  % for svdfft at max. only one dipole orientation remains
@@ -302,8 +331,8 @@ if ispccdata
       
       % compute rotated leadfield
       % FIXME in the presence of a refdip and/or supdip, this does not work; leadfield is Nx3
-      if isfield(source,  'leadfield'),
-        %FIXME this is a proposed dirty fix
+      if isfield(source,  'leadfield')
+        % FIXME this is a proposed dirty fix
         n1 = size(source.leadfield{i},2);
         %n2 = size(rotmat,2) - n1;
         n2 = size(rotmat,2) - n1 +1; %added 1 JM
@@ -363,29 +392,29 @@ if ispccdata
   supdipselcell  = cell(Ndipole,1);
   supchanselcell = cell(Ndipole,1);
   
-  for diplop = 1:Ndipole
-    dipsel     = find(strcmp(csdlabel{diplop}, 'scandip'));
-    refchansel = find(strcmp(csdlabel{diplop}, 'refchan'));
-    refdipsel  = find(strcmp(csdlabel{diplop}, 'refdip'));
-    supchansel = find(strcmp(csdlabel{diplop}, 'supchan'));
-    supdipsel  = find(strcmp(csdlabel{diplop}, 'supdip'));
+  for i = insideindx
+    dipsel     = find(strcmp(csdlabel{i}, 'scandip'));
+    refchansel = find(strcmp(csdlabel{i}, 'refchan'));
+    refdipsel  = find(strcmp(csdlabel{i}, 'refdip'));
+    supchansel = find(strcmp(csdlabel{i}, 'supchan'));
+    supdipsel  = find(strcmp(csdlabel{i}, 'supdip'));
     
     hasrefdip  = ~isempty(refdipsel)  && hasrefdip; %NOTE: it has to be true for all dipoles!
     hasrefchan = ~isempty(refchansel) && hasrefchan;
     hassupdip  = ~isempty(supdipsel)  && hassupdip;
     hassupchan = ~isempty(supchansel) && hassupchan;
     
-    dipselcell{diplop}     = dipsel;
-    refdipselcell{diplop}  = refdipsel;
-    refchanselcell{diplop} = refchansel;
-    supdipselcell{diplop}  = supdipsel;
-    supchanselcell{diplop} = supchansel;
+    dipselcell{i}     = dipsel;
+    refdipselcell{i}  = refdipsel;
+    refchanselcell{i} = refchansel;
+    supdipselcell{i}  = supdipsel;
+    supchanselcell{i} = supchansel;
   end
   
   if keeptrials
     % do the processing of the CSD matrices for each trial
     if ~strcmp(cfg.supmethod, 'none')
-      error('suppression is only supported for average CSD');
+      ft_error('suppression is only supported for average CSD');
     end
     %dipselcell = mat2cell(repmat(dipsel(:)', [Ndipole 1]), ones(Ndipole,1), length(dipsel));
     %if hasrefdip,  refdipselcell  = mat2cell(repmat(refdipsel(:)',  [Ndipole 1]), ones(Ndipole,1), length(refdipsel));  end
@@ -409,7 +438,7 @@ if ispccdata
       if hasrefchan, source.trial(triallop).refchanpow(source.inside) = cellfun(powmethodfun,source.trial(triallop).csd(source.inside), refchanselcell(source.inside)); end
       if hassupchan, source.trial(triallop).supchanpow(source.inside) = cellfun(powmethodfun,source.trial(triallop).csd(source.inside), supchanselcell(source.inside)); end
       %FIXME kan volgens mij niet
-      if isnoise && isfield(source.trial(triallop), 'noisecsd'),
+      if isnoise && isfield(source.trial(triallop), 'noisecsd')
         % compute the power of the noise projected on each source component
         source.trial(triallop).noise = cellfun(powmethodfun,source.trial(triallop).csd, dipselcell);
         if hasrefdip,  source.trial(triallop).refdipnoise  = cellfun(powmethodfun,source.trial(triallop).noisecsd, refdipselcell);  end
@@ -444,8 +473,8 @@ if ispccdata
       scnindx = setdiff(1:size(tmpcsd,1), supindx);
       tmpcsd  = tmpcsd(scnindx, scnindx) - tmpcsd(scnindx, supindx)*pinv(tmpcsd(supindx, supindx))*tmpcsd(supindx, scnindx);
       source.avg.csd{i}   = tmpcsd;
-    end % for i=insideindx
-    %     source.avg.csdlabel = source.avg.csdlabel(scnindx);
+    end % for insideindx
+    % source.avg.csdlabel = source.avg.csdlabel(scnindx);
     
     if isnoise && ~strcmp(cfg.supmethod, 'none')
       source.avg = rmfield(source.avg, 'noisecsd');
@@ -453,54 +482,56 @@ if ispccdata
     
     % initialize the variables
     source.avg.pow           = nan(Ndipole, 1);
-    if ~isempty(refdipsel),  source.avg.refdippow     = nan(Ndipole, 1); end
-    if ~isempty(refchansel), source.avg.refchanpow    = nan(Ndipole, 1); end
-    if ~isempty(supdipsel),  source.avg.supdippow     = nan(Ndipole, 1); end
-    if ~isempty(supchansel), source.avg.supchanpow    = nan(Ndipole, 1); end
+    if hasrefdip,  source.avg.refdippow     = nan(Ndipole, 1); end
+    if hasrefchan, source.avg.refchanpow    = nan(Ndipole, 1); end
+    if hassupdip,  source.avg.supdippow     = nan(Ndipole, 1); end
+    if hassupchan, source.avg.supchanpow    = nan(Ndipole, 1); end
     if isnoise
       source.avg.noise         = nan(Ndipole, 1);
-      if ~isempty(refdipsel),  source.avg.refdipnoise     = nan(Ndipole, 1); end
-      if ~isempty(refchansel), source.avg.refchannoise    = nan(Ndipole, 1); end
-      if ~isempty(supdipsel),  source.avg.supdipnoise     = nan(Ndipole, 1); end
-      if ~isempty(supchansel), source.avg.supchannoise    = nan(Ndipole, 1); end
+      if hasrefdip,  source.avg.refdipnoise     = nan(Ndipole, 1); end
+      if hasrefchan, source.avg.refchannoise    = nan(Ndipole, 1); end
+      if hassupdip,  source.avg.supdipnoise     = nan(Ndipole, 1); end
+      if hassupchan, source.avg.supchannoise    = nan(Ndipole, 1); end
     end % if isnoise
-    if ~isempty(refsel),       source.avg.coh           = nan(Ndipole, 1); end
-    if strcmp(cfg.eta, 'yes'),
+    if hasrefdip||hasrefchan, source.avg.coh    = nan(Ndipole, 1); end
+    if strcmp(cfg.eta, 'yes')
       source.avg.eta           = nan(Ndipole, 1);
       source.avg.ori             = cell(1, Ndipole);
     end
-    if strcmp(cfg.eta, 'yes') && ~isempty(refsel),
+    if strcmp(cfg.eta, 'yes') && ~isempty(refsel)
       source.avg.etacsd = nan(Ndipole, 1);
       source.avg.ucsd   = cell(1, Ndipole);
     end
-    if strcmp(cfg.fa, 'yes'),
+    if strcmp(cfg.fa, 'yes')
       source.avg.fa = nan(Ndipole, 1);
     end
     
     for i=insideindx
       dipsel = dipselcell{i};
+      refsel = [refchanselcell{i} refdipselcell{i}];
+      
       % compute the power of each source component
-      if strcmp(cfg.projectmom, 'yes') && cfg.numcomp>1,
-        source.avg.pow(i) = powmethodfun(source.avg.csd{i}(dipsel,dipsel), 1);
+      if strcmp(cfg.projectmom, 'yes') && cfg.numcomp>1
+        source.avg.pow(i) = powmethodfun(source.avg.csd{i}(dipselcell{i},dipselcell{i}), 1);
       else
-        source.avg.pow(i) = powmethodfun(source.avg.csd{i}(dipsel,dipsel));
+        source.avg.pow(i) = powmethodfun(source.avg.csd{i}(dipselcell{i},dipselcell{i}));
       end
       
-      if ~isempty(refdipsel),  source.avg.refdippow(i)  = powmethodfun(source.avg.csd{i}(refdipsel,refdipsel));   end
-      if ~isempty(supdipsel),  source.avg.supdippow(i)  = powmethodfun(source.avg.csd{i}(supdipsel,supdipsel));   end
-      if ~isempty(refchansel), source.avg.refchanpow(i) = powmethodfun(source.avg.csd{i}(refchansel,refchansel)); end
-      if ~isempty(supchansel), source.avg.supchanpow(i) = powmethodfun(source.avg.csd{i}(supchansel,supchansel)); end
+      if hasrefdip,  source.avg.refdippow(i)  = powmethodfun(source.avg.csd{i}(refdipsel,refdipsel));   end
+      if hassupdip,  source.avg.supdippow(i)  = powmethodfun(source.avg.csd{i}(supdipsel,supdipsel));   end
+      if hasrefchan, source.avg.refchanpow(i) = powmethodfun(source.avg.csd{i}(refchansel,refchansel)); end
+      if hassupchan, source.avg.supchanpow(i) = powmethodfun(source.avg.csd{i}(supchansel,supchansel)); end
       if isnoise
         % compute the power of the noise projected on each source component
-        if strcmp(cfg.projectmom, 'yes') && cfg.numcomp>1,
-          source.avg.noise(i) = powmethodfun(source.avg.noisecsd{i}(dipsel,dipsel), 1);
+        if strcmp(cfg.projectmom, 'yes') && cfg.numcomp>1
+          source.avg.noise(i) = powmethodfun(source.avg.noisecsd{i}(dipselcell{i},dipselcell{i}), 1);
         else
-          source.avg.noise(i) = powmethodfun(source.avg.noisecsd{i}(dipsel,dipsel));
+          source.avg.noise(i) = powmethodfun(source.avg.noisecsd{i}(dipselcell{i},dipselcell{i}));
         end
-        if ~isempty(refdipsel),  source.avg.refdipnoise(i)  = powmethodfun(source.avg.noisecsd{i}(refdipsel,refdipsel));   end
-        if ~isempty(supdipsel),  source.avg.supdipnoise(i)  = powmethodfun(source.avg.noisecsd{i}(supdipsel,supdipsel));   end
-        if ~isempty(refchansel), source.avg.refchannoise(i) = powmethodfun(source.avg.noisecsd{i}(refchansel,refchansel)); end
-        if ~isempty(supchansel), source.avg.supchannoise(i) = powmethodfun(source.avg.noisecsd{i}(supchansel,supchansel)); end
+        if hasrefdip,  source.avg.refdipnoise(i)  = powmethodfun(source.avg.noisecsd{i}(refdipsel,refdipsel));   end
+        if hassupdip,  source.avg.supdipnoise(i)  = powmethodfun(source.avg.noisecsd{i}(supdipsel,supdipsel));   end
+        if hasrefchan, source.avg.refchannoise(i) = powmethodfun(source.avg.noisecsd{i}(refchansel,refchansel)); end
+        if hassupchan, source.avg.supchannoise(i) = powmethodfun(source.avg.noisecsd{i}(supchansel,supchansel)); end
       end % if isnoise
       
       if ~isempty(refsel)
@@ -520,18 +551,18 @@ if ispccdata
             Cdr               = lambda1(csd(dipsel, refsel));
             source.avg.coh(i) = abs(Cdr).^2 ./ (Pd*Pr);
           case 'canonical'
-            [ccoh, c2, v1, v2] = cancorr(csd, dipsel, refsel);
+            [ccoh, c2, v1, v2] = ft_connectivity_cancorr(csd, dipsel, refsel);
             [cmax, indmax]     = max(ccoh);
             source.avg.coh(i)  = ccoh(indmax);
           otherwise
-            error('unsupported cohmethod');
+            ft_error('unsupported cohmethod');
         end % cohmethod
       end
       
       % compute eta
       if strcmp(cfg.eta, 'yes')
-        [source.avg.eta(i), source.avg.ori{i}] = csd2eta(source.avg.csd{i}(dipsel,dipsel));
-        if ~isempty(refsel),
+        [source.avg.eta(i), source.avg.ori{i}] = csd2eta(source.avg.csd{i}(dipselcell{i},dipselcell{i}));
+        if ~isempty(refsel)
           %FIXME this only makes sense when only a reference signal OR a dipole is selected
           [source.avg.etacsd(i), source.avg.ucsd{i}] = csd2eta(source.avg.csd{i}(dipsel,refsel));
         end
@@ -550,10 +581,13 @@ if ispccdata
       source.avg = rmfield(source.avg, 'noisecsd');
     end
     
-  end
+  end % if keeptrials
   
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 elseif ismneavg
-  %the source reconstruction was computed using the minimumnormestimate and contains an average timecourse
+  % the source reconstruction was computed using mne and contains an average timecourse
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  
   if demean
     begsmp = nearest(source.time, cfg.baselinewindow(1));
     endsmp = nearest(source.time, cfg.baselinewindow(2));
@@ -593,7 +627,20 @@ elseif ismneavg
       end
     end
     ft_progress('close');
-  end
+  end % if projectmom
+  
+  if flipori
+    tmpmom = cat(1, source.avg.mom{source.inside});
+    [u, ~, ~] = svd(tmpmom, 'econ');
+    flip( source.inside) = sign(u(:,1));
+    flip(~source.inside) = nan;
+    for i=1:numel(source.inside)
+      if source.inside(i)
+        source.avg.mom{i} = flip(i) * source.avg.mom{i};
+        source.avg.ori{i} = flip(i) * source.avg.ori{i};
+      end
+    end
+  end % if flipori
   
   if zscore
     begsmp = nearest(source.time, cfg.baselinewindow(1));
@@ -608,10 +655,9 @@ elseif ismneavg
       smom = std(mom(:,begsmp:endsmp),[],2);
       pow  = sum(((mom-mmom(:,ones(size(mom,2),1)))./smom(:,ones(size(mom,2),1))).^2,1);
       source.avg.pow(insideindx(diplop),:) = pow;
-      %source.avg.absmom(source.inside(diplop),:) = sum((mom-mmom)./smom,1);
+      source.avg.mom{insideindx(diplop)}   = diag(1./smom)*mom;
     end
     ft_progress('close');
-    
   else
     % just square for power
     ft_progress('init', cfg.feedback, 'computing power');
@@ -624,9 +670,7 @@ elseif ismneavg
       %source.avg.absmom(insideindx(diplop),:) = sum(mom,1);
     end
     ft_progress('close');
-    
-  end
-  
+  end % if zscore
   
   if strcmp(cfg.kurtosis, 'yes')
     fprintf('computing kurtosis based on dipole timecourse\n');
@@ -634,15 +678,17 @@ elseif ismneavg
     for diplop=1:length(insideindx)
       mom = source.avg.mom{insideindx(diplop)};
       if length(mom)~=prod(size(mom))
-        error('kurtosis can only be computed for projected dipole moment');
+        ft_error('kurtosis can only be computed for projected dipole moment');
       end
       source.avg.k2(insideindx(diplop)) = kurtosis(mom);
     end
   end
   
   
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 elseif islcmvavg
   % the source reconstruction was computed using the lcmv beamformer and contains an average timecourse
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   
   if projectmom
     ft_progress('init', cfg.feedback, 'projecting dipole moment');
@@ -654,6 +700,19 @@ elseif islcmvavg
       source.avg.ori{insideindx(diplop)} = rmom;
     end
     ft_progress('close');
+  end
+  
+  if flipori
+    tmpmom = cat(1, source.avg.mom{source.inside});
+    [u, ~, ~] = svd(tmpmom, 'econ');
+    flip( source.inside) = sign(u(:,1));
+    flip(~source.inside) = nan;
+    for i=1:numel(source.inside)
+      if source.inside(i)
+        source.avg.mom{i} = flip(i) * source.avg.mom{i};
+        source.avg.ori{i} = flip(i) * source.avg.ori{i};
+      end
+    end
   end
   
   if ~strcmp(cfg.powmethod, 'none')
@@ -672,14 +731,17 @@ elseif islcmvavg
     for diplop=1:length(insideindx)
       mom = source.avg.mom{insideindx(diplop)};
       if length(mom)~=prod(size(mom))
-        error('kurtosis can only be computed for projected dipole moment');
+        ft_error('kurtosis can only be computed for projected dipole moment');
       end
       source.avg.k2(insideindx(diplop)) = kurtosis(mom);
     end
   end
   
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 elseif islcmvtrl
   % the source reconstruction was computed using the lcmv beamformer and contains a single-trial timecourse
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  
   ntrial = length(source.trial);
   
   if projectmom && strcmp(cfg.fixedori, 'within_trials')
@@ -743,14 +805,16 @@ elseif islcmvtrl
       for diplop=1:length(insideindx)
         mom = source.trial(trllop).mom{insideindx(diplop)};
         if length(mom)~=numel(mom)
-          error('kurtosis can only be computed for projected dipole moment');
+          ft_error('kurtosis can only be computed for projected dipole moment');
         end
         source.trial(trllop).k2(insideindx(diplop)) = kurtosis(mom);
       end
     end
   end
   
-end % dealing with pcc or lcmv input
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+end % dealing with pcc, lcmv, dics or mne input
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if isfield(source, 'avg') && isfield(source.avg, 'pow') && isfield(source.avg, 'noise') && ~ismneavg
   % compute the neural activity index for the average
@@ -845,7 +909,7 @@ if strcmp(source.method, 'jackknife') || strcmp(source.method, 'bootstrap') || s
   
   % determine the (original) number of trials in the data
   if strcmp(source.method, 'bootstrap') %VERANDERD ER ZAT GEEN .RESAMPLE IN SOURCE
-    Ntrials = size(source.trial,2);% WAS size(source.resample, 2);
+    Ntrials = size(source.trial,2); % WAS size(source.resample, 2);
   else
     Ntrials = length(source.trial);
   end
@@ -870,7 +934,7 @@ if strcmp(source.method, 'jackknife') || strcmp(source.method, 'bootstrap') || s
     sumdip.mom = cell(size(dip(1).mom));
     sqrdip.mom = cell(size(dip(1).mom));
     for i=1:length(dip(1).mom)
-      sumdip.mom{i} = zeros(size(dip(1).mom{i})); 
+      sumdip.mom{i} = zeros(size(dip(1).mom{i}));
       sqrdip.mom{i} = zeros(size(dip(1).mom{i}));
     end
   end
@@ -898,14 +962,14 @@ if strcmp(source.method, 'jackknife') || strcmp(source.method, 'bootstrap') || s
     if isfield(dip(trial), 'rv'),     sqrdip.rv     = sqrdip.rv    + (dip(trial).rv   ).^2; end
     if isfield(dip(trial), 'noise'),  sqrdip.noise  = sqrdip.noise + (dip(trial).noise).^2; end
     if isfield(dip(trial), 'nai'),    sqrdip.nai    = sqrdip.nai   + (dip(trial).nai  ).^2; end
-    % do the same for the cell array with mom
+    % do the same for the cell-array with mom
     if isfield(dip(trial), 'mom')
       for i=1:length(dip(1).mom)
         sumdip.mom{i} = sumdip.mom{i} +  dip(trial).mom{i};
         sqrdip.mom{i} = sqrdip.mom{i} + (dip(trial).mom{i}).^2;
       end
     end
-    % do the same for the cell array with csd
+    % do the same for the cell-array with csd
     if isfield(dip(trial), 'csd')
       for i=1:length(dip(1).csd)
         sumdip.csd{i} = sumdip.csd{i} +  dip(trial).csd{i};
@@ -921,8 +985,8 @@ if strcmp(source.method, 'jackknife') || strcmp(source.method, 'bootstrap') || s
   if isfield(sumdip, 'rv'),     dipmean.rv     = sumdip.rv    / length(dip); end
   if isfield(sumdip, 'noise'),  dipmean.noise  = sumdip.noise / length(dip); end
   if isfield(sumdip, 'nai'),    dipmean.nai    = sumdip.nai   / length(dip); end
-  % for the cell array with mom, this is done further below
-  % for the cell array with csd, this is done further below
+  % for the cell-array with mom, this is done further below
+  % for the cell-array with csd, this is done further below
   
   % the estimates for variance and SEM are biased if we are working with the jackknife/bootstrap
   % determine the proper variance scaling that corrects for this bias
@@ -941,7 +1005,7 @@ if strcmp(source.method, 'jackknife') || strcmp(source.method, 'bootstrap') || s
     bias = Ntrials;
   elseif strcmp(source.method, 'pseudovalue')
     % note that I have not put any thought in this aspect yet
-    warning('don''t know how to compute bias for pseudovalue resampling');
+    ft_warning('don''t know how to compute bias for pseudovalue resampling');
     bias = 1;
   end
   
@@ -961,7 +1025,7 @@ if strcmp(source.method, 'jackknife') || strcmp(source.method, 'bootstrap') || s
   if isfield(sumdip, 'noise' ), dipsem.noise  = (dipvar.noise /Ntrials).^0.5; end
   if isfield(sumdip, 'nai' ),   dipsem.nai    = (dipvar.nai   /Ntrials).^0.5; end
   
-  % compute the mean and SEM over all repetitions for the cell array with mom
+  % compute the mean and SEM over all repetitions for the cell-array with mom
   if isfield(dip(trial), 'mom')
     for i=1:length(dip(1).mom)
       dipmean.mom{i} = sumdip.mom{i}/length(dip);
@@ -970,7 +1034,7 @@ if strcmp(source.method, 'jackknife') || strcmp(source.method, 'bootstrap') || s
     end
   end
   
-  % compute the mean and SEM over all repetitions for the cell array with csd
+  % compute the mean and SEM over all repetitions for the cell-array with csd
   if isfield(dip(trial), 'csd')
     for i=1:length(dip(1).csd)
       dipmean.csd{i} = sumdip.csd{i}/length(dip);
@@ -1018,17 +1082,28 @@ end
 
 % compute fwhm
 if strcmp(cfg.fwhm, 'yes')
-  fprintf('computing fwhm of spatial filters\n');
-  source = estimate_fwhm1(source, cfg.fwhmremovecenter);
+  switch cfg.fwhmmethod
+    case 'barnes'
+      if ~isfield(source, 'dim')
+        ft_error('computation of fwhm is not possible with method ''barnes'' is not possible when the dipoles are not defined on a regular 3D grid');
+      end
+      fprintf('computing fwhm of spatial filters using method ''barnes''\n');
+      source = estimate_fwhm1(source, cfg.fwhmremovecenter);
+    case 'gaussfit'
+      fprintf('computing fwhm of spatial filters using method ''gaussfit''\n');
+      source = estimate_fwhm2(source, cfg.fwhmmaxdist);
+    otherwise
+      ft_error('unknown method for fwhm estimation');
+  end
 end
 
 % do the general cleanup and bookkeeping at the end of the function
 ft_postamble debug
 ft_postamble trackconfig
-ft_postamble provenance
-ft_postamble previous source
-ft_postamble history source
-ft_postamble savevar source
+ft_postamble previous   source
+ft_postamble provenance source
+ft_postamble history    source
+ft_postamble savevar    source
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1054,7 +1129,7 @@ fa = sqrt( (ns./(ns-1)) .* (sum((s-ms).^2))./(sum(s.^2)) );
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function p = powmethod_lambda1(x, ind)
 
-if nargin==1,
+if nargin==1
   ind = 1:size(x,1);
 end
 s = svd(x(ind,ind));
@@ -1065,7 +1140,7 @@ p = s(1);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function p = powmethod_trace(x, ind)
 
-if nargin==1,
+if nargin==1
   ind = 1:size(x,1);
 end
 p = trace(x(ind,ind));
@@ -1075,7 +1150,7 @@ p = trace(x(ind,ind));
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function p = powmethod_regular(x, ind)
 
-if nargin==1,
+if nargin==1
   ind = 1:size(x,1);
 end
 p = abs(x(ind,ind));

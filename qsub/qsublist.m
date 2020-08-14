@@ -33,7 +33,7 @@ function retval = qsublist(cmd, jobid, pbsid)
 % See also QSUBCELLFUN, QSUBFEVAL, QSUBGET
 
 % -----------------------------------------------------------------------
-% Copyright (C) 2011-2015, Robert Oostenveld
+% Copyright (C) 2011-2016, Robert Oostenveld
 %
 % This program is free software: you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -165,7 +165,12 @@ switch cmd
       switch backend
         case 'torque'
           [dum, jobstatus] = system(['qstat ' pbsid ' -f1 | grep job_state | grep -o "= [A-Z]" | grep -o "[A-Z]"']);
-          retval = strcmp(strtrim(jobstatus) ,'C');
+          if isempty(jobstatus)
+            warning('cannot determine the status for pbsid %s', pbsid);
+            retval = 1;
+          else
+            retval = strcmp(strtrim(jobstatus) ,'C');
+          end
         case 'lsf'
           [dum, jobstatus] = system(['bjobs ' pbsid ' | awk ''NR==2'' | awk ''{print $3}'' ']);
           retval = strcmp(strtrim(jobstatus), 'DONE');
@@ -203,7 +208,7 @@ switch cmd
     retval = pbsid;
 
   otherwise
-    error('unsupported command (%s)', cmd);
+    error('unsupported command "%s"', cmd);
 end % switch
 
 if length(list_jobid)~=length(list_pbsid)

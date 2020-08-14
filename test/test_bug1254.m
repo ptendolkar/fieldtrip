@@ -1,32 +1,14 @@
 function test_bug1254
 
-% MEM 1500mb
+% MEM 2gb
 % WALLTIME 00:10:00
 
 % the bug has not been fixed yet, so there is no point in automatically
 % executing this test
 return
+% DEPENDENCY qsubcompile qsubcellfun
 
-% TEST test_bug1254
-% TEST qsubcompile qsubcellfun
-
-% list the possible locations for the data
-dataset = {
-  '/Users/robert/data/Subject01/Subject01.ds'
-  '/home/common/matlab/fieldtrip/data/Subject01.ds'
-  };
-
-% pick the available dataset
-for i=1:length(dataset)
-  if exist(dataset{i}, 'dir')
-    dataset = dataset{i};
-    break
-  end
-end
-
-if ~ischar(dataset)
-  error('could not locate the test dataset');
-end
+dataset = dccnpath('/home/common/matlab/fieldtrip/data/Subject01.ds');
 
 cfg = [];
 cfg.dataset = dataset;

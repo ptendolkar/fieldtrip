@@ -1,4 +1,4 @@
-function [matrix, extra] = read_mat(fn);
+function [matrix, extra] = read_mat(fn)
 
 % READ_MAT reads a matrix from an ascii or binary MBF format file
 %
@@ -13,7 +13,7 @@ function [matrix, extra] = read_mat(fn);
 
 % Copyright (C) 1998, Thom Oostendorp 
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -31,18 +31,19 @@ function [matrix, extra] = read_mat(fn);
 %
 % $Id$
 
-f=fopen(fn);
-if (f==-1)
-  fprintf('\nCannot open %s\n\n', fn);
+try
+f=fopen_or_error(fn);
+catch err
+  fprintf('\nCannot open file: %s\n\n', err.message);
   result=0;
   extra='';
-  return;
+  return
 end
 
 [N,nr]=fscanf(f,'%d',2);
 if (nr~=2)
   fclose(f);
-  f=fopen(fn);
+  f=fopen_or_error(fn);
   [magic ,nr]=fread(f,8,'char');
   if (char(magic')==';;mbfmat')
     fread(f,1,'char');
@@ -54,7 +55,7 @@ if (nr~=2)
     M=fread(f,[N(2),N(1)],'double');
   else
     fclose(f);
-    f=fopen(fn);
+    f=fopen_or_error(fn);
     N=fread(f,2,'long');
     M=fread(f,[N(2),N(1)],'float');
   end

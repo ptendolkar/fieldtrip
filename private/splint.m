@@ -26,9 +26,10 @@ function [V2, L2, L1] = splint(elc1, V1, elc2, order, degree, lambda)
 %   F. Perrin, J. Pernier, O. Bertrand, and J. F. Echallier.
 %   Corrigenda: EEG 02274, Electroencephalography and Clinical
 %   Neurophysiology 76:565.
+
 % Copyright (C) 2003, Robert Oostenveld
 % 
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -49,7 +50,7 @@ function [V2, L2, L1] = splint(elc1, V1, elc2, order, degree, lambda)
 N = size(elc1,1);   % number of known electrodes
 M = size(elc2,1);   % number of unknown electrodes
 T = size(V1,2);     % number of timepoints in the potential
-Z = V1;         % potential on known electrodes, can be matrix
+Z = V1;             % potential on known electrodes, can be matrix
 
 % remember the actual size of the sphere
 sphere1_scale = mean(sqrt(sum(elc1.^2,2)));
@@ -99,7 +100,7 @@ L1 = hx * C(2:end, :);
 L1 = L1 / (sphere1_scale^2);
 
 if all(size(elc1)==size(elc2)) && all(elc1(:)==elc2(:))
-  warning('using shortcut for splint');
+  ft_warning('using shortcut for splint');
   % do not recompute gx and hx
 else
   % compute cosine of angle between all known and unknown electrodes
@@ -111,6 +112,7 @@ else
   end
   [gx, hx] = gh(CosEji, order, degree);
 end
+
 % compute interpolated potential on all unknown electrodes by matrix multiplication
 V2 = [ones(M,1) gx] * C;
 

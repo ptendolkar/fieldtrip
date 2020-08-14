@@ -1,10 +1,8 @@
-function test_bug2769
+function failed_bug2769
 
-% MEM 1gb
+% MEM 2gb
 % WALLTIME 00:10:00
-
-% TEST test_bug2769
-% TEST ft_sourceplot ft_sourceinterpolate
+% DEPENDENCY ft_sourceplot ft_sourceinterpolate
 
 clear all
 close all
@@ -27,6 +25,7 @@ seg1 = sqrt(sum(pos1.^2, 2))<4;
 mri1.anatomy = reshape(seg1, mri1.dim);
 mri1.seg     = reshape(seg1, mri1.dim);
 
+
 mri2 = [];
 mri2.dim = [19 19 19];
 mri2.transform = [
@@ -42,6 +41,10 @@ seg2 = sqrt(sum(pos2.^2, 2))<4;
 
 mri2.anatomy = reshape(seg2, mri2.dim);
 mri2.seg     = reshape(seg2, mri2.dim);
+
+% add some noise, otherwise it resembles a segmentation
+mri1.anatomy = mri1.anatomy + 0.1*randn(size(mri1.anatomy));
+mri2.anatomy = mri2.anatomy + 0.1*randn(size(mri2.anatomy));
 
 cfg = [];
 ft_sourceplot(cfg, mri1);
@@ -64,10 +67,10 @@ cfg.numvertices = 1500;
 mesh2 = ft_prepare_mesh(cfg, mri2);
 
 surface1 = mesh1;
-surface1.pow = surface1.pnt(:,3);
+surface1.pow = surface1.pos(:,3);
 
 surface2 = mesh2;
-surface2.pow = surface2.pnt(:,3);
+surface2.pow = surface2.pos(:,3);
 
 %% interpolate volume data onto surface
 

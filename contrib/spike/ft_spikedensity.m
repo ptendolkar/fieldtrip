@@ -1,4 +1,4 @@
-function [sdf, sdfdata] = ft_spikedensity(cfg,data)
+function [sdf, sdfdata] = ft_spikedensity(cfg, data)
 
 % FT_SPIKEDENSITY computes the spike density function of the spike trains by
 % convolving the data with a window.
@@ -7,9 +7,9 @@ function [sdf, sdfdata] = ft_spikedensity(cfg,data)
 %   [sdf]          = ft_spike_density(cfg, data)
 %   [sdf, sdfdata] = ft_spike_density(cfg, data)
 % 
-% If you specify one output argument, only the average and variance of
-% spikedensityfunction across trials will be computed and individual trials are
-% not kept. See cfg.winfunc below for more information on the specific use.
+% If you specify one output argument, only the average and variance of spike density
+% function across trials will be computed and individual trials are not kept. See
+% cfg.winfunc below for more information on the smoothing kernel to use.
 %
 % Inputs:
 %   DATA should be organised in a RAW structure with binary spike
@@ -34,7 +34,7 @@ function [sdf, sdfdata] = ft_spikedensity(cfg,data)
 %                        For cfg.winfunc = 'gauss': the standard deviation in seconds (default =
 %                                         1/4 of window duration in seconds)
 %                        For cfg.winfunc = 'wname' with 'wname' any standard window function
-%                                          see window opts in that function and add as cell array
+%                                          see window opts in that function and add as cell-array
 %                        If cfg.winfunctopt = [], default opts are taken.
 %   cfg.latency        = [begin end] in seconds, 'maxperiod' (default), 'minperiod',
 %                        'prestim'(t>=0), or 'poststim' (t>=0).
@@ -44,36 +44,55 @@ function [sdf, sdfdata] = ft_spikedensity(cfg,data)
 %                         the computation of the average and the variance.
 %                        'no'  - only select those trials that fully cover the window as
 %                         specified by cfg.latency.
-%   cfg.spikechannel   = see FT_CHANNELSELECTION for details
+%   cfg.spikechannel   = cell-array ,see FT_CHANNELSELECTION for details
 %   cfg.trials         =  numeric or logical selection of trials (default = 'all')
 %   cfg.keeptrials     = 'yes' or 'no' (default). If 'yes', we store the trials in a matrix
-%                         in output SDF as well.
+%                         in the output SDF as well
 %   cfg.fsample        = additional user input that can be used when input
 %                        is a SPIKE structure, in that case a continuous
 %                        representation is created using cfg.fsample
-%                        (default = 1000);
-% Outputs:
-%   - SDF is a structure similar to TIMELOCK (output from FT_TIMELOCKANALYSIS) and can be used
-%     in FT_TIMELOCKSTATISTICS for example and FT_SPIKE_PLOT_RASTER
-%   - SDFDATA is a raw DATA type structure that can be used itself in all
-%   functions that support raw data input (such as FT_TIMELOCKANALYSIS, FT_FREQANALYSIS).
+%                        (default = 1000)
 %
-% Further processing:
-%   FT_TIMELOCKSTATISTICS:               Compute statistics on SDF
-%   FT_SPIKE_PLOT_RASTER:                Plot together with the raster plots
-%   FT_SINGLEPLOTER and FT_MULTIPLOTER : Plot spike-density alone
-%   All FieldTrip functions operating on RAW datatype (second output)
+% The SDF output is a data structure similar to the TIMELOCK structure from FT_TIMELOCKANALYSIS.
+% For subsequent processing you can use for example
+%   FT_TIMELOCKSTATISTICS                Compute statistics on SDF
+%   FT_SPIKE_PLOT_RASTER                 Plot together with the raster plots
+%   FT_SINGLEPLOTER and FT_MULTIPLOTER   Plot spike-density alone
+%
+% The SDFDATA output is a data structure similar to DATA type structure from FT_PREPROCESSING.
+% For subsequent processing you can use for example
+%   FT_TIMELOCKANALYSIS                  Compute time-locked average and variance
+%   FT_FREQANALYSIS                      Compute frequency and time-ferquency spectrum.
 
 % Copyright (C) 2010-2012, Martin Vinck
 %
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
+% for the documentation and details.
+%
+%    FieldTrip is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+%
+%    FieldTrip is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+%    GNU General Public License for more details.
+%
+%    You should have received a copy of the GNU General Public License
+%    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
+%
 % $Id$
 
-revision = '$Id$';
+% these are used by the ft_preamble/ft_postamble function and scripts
+ft_revision = '$Id$';
+ft_nargin   = nargin;
+ft_nargout  = nargout;
 
 % do the general setup of the function
 ft_defaults
 ft_preamble init
-ft_preamble callinfo
+ft_preamble provenance data
 ft_preamble trackconfig
 
 % get the default options
@@ -102,7 +121,7 @@ cfg = ft_checkopt(cfg, 'winfuncopt', {'cell', 'double', 'empty'});
 cfg = ft_checkopt(cfg, 'fsample', 'double');
 if strcmp(class(cfg.winfunc), 'function_handle'), cfg.winfunc = func2str(cfg.winfunc); end
 
-cfg = ft_checkconfig(cfg, 'allowed', {'outputunit', 'spikechannel', 'latency', 'trials', 'vartriallen', 'keeptrials', 'timwin', 'winfunc', 'winfuncopt', 'fsample', 'warning', 'progress'});
+cfg = ft_checkconfig(cfg, 'allowed', {'outputunit', 'spikechannel', 'latency', 'trials', 'vartriallen', 'keeptrials', 'timwin', 'winfunc', 'winfuncopt', 'fsample'});
 
 % check input data structure
 data = ft_checkdata(data, 'datatype', 'raw', 'feedback', 'yes', 'fsample', cfg.fsample);
@@ -121,7 +140,7 @@ if nUnits==0, error('no spikechannel selected by means of cfg.spikechannel'); en
 % get the number of trials or change DATA according to cfg.trials
 if  strcmp(cfg.trials,'all')
   cfg.trials = 1:length(data.trial);
-elseif islogical(cfg.trials)
+elseif islogical(cfg.trials) || all(cfg.trials==0 | cfg.trials==1)
   cfg.trials = find(cfg.trials);
 end
 cfg.trials = sort(cfg.trials(:));
@@ -265,7 +284,7 @@ for iTrial = 1:nTrials
     end
     
     % pad with nans if there's variable trial length
-    dofsel = ~isnan(y);%true(1,length(y));
+    dofsel = ~isnan(y); %true(1,length(y));
     if strcmp(cfg.vartriallen,'yes')
       padLeft  = zeros(1, samplesShift(iTrial));
       padRight = zeros(1,(maxNumSamples - nSamples - samplesShift(iTrial)));
@@ -314,14 +333,17 @@ end
 
 % do the general cleanup and bookkeeping at the end of the function
 ft_postamble trackconfig
-ft_postamble callinfo
 ft_postamble previous data
-ft_postamble history sdf
+ft_postamble provenance sfd
+ft_postamble history    sdf
 if nargout==2
   ft_postamble history sdfdata
 end
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% SUBFUNCTION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [spikelabel, eeglabel] = detectspikechan(data)
 
 % autodetect the spike channels

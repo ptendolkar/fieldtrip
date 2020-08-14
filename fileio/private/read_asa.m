@@ -24,7 +24,7 @@ function [val] = read_asa(filename, elem, format, number, token)
 
 % Copyright (C) 2002-2012, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -42,10 +42,7 @@ function [val] = read_asa(filename, elem, format, number, token)
 %
 % $Id$
 
-fid = fopen(filename, 'rt');
-if fid==-1
-  error(sprintf('could not open file %s', filename));
-end
+fid = fopen_or_error(filename, 'rt');
 
 if nargin<4
   if strcmp(format, '%s')

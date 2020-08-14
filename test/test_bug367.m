@@ -1,19 +1,17 @@
 function test_bug367
 
-% MEM 1500mb
+% MEM 2gb
 % WALLTIME 00:10:00
+% DEPENDENCY ft_megrealign ft_read_sens ft_dipolesimulation ft_timelockanalysis ft_multiplotER
 
-% this test script is for http://bugzilla.fcdonders.nl/show_bug.cgi?id=367
-% and was constructed from http://fieldtrip.fcdonders.nl/example/megrealign
-
-% TEST test_bug367
-% TEST ft_megrealign ft_read_sens ft_dipolesimulation ft_timelockanalysis ft_multiplotER
+% this test script is for http://bugzilla.fieldtriptoolbox.org/show_bug.cgi?id=367
+% and was constructed from http://www.fieldtriptoolbox.org/example/megrealign
 
 % the two example files with the 151 and 275 channel CTF specifications are available from
-% ftp://ftp.fcdonders.nl/pub/fieldtrip/example/megrealign
+% ftp://ftp.fieldtriptoolbox.org/pub/fieldtrip/example/megrealign
 
-grad151 = ft_read_sens('/home/common/matlab/fieldtrip/data/test/bug367/ctf151.mat');
-grad275 = ft_read_sens('/home/common/matlab/fieldtrip/data/test/bug367/ctf275.mat');
+grad151 = ft_read_sens(dccnpath('/home/common/matlab/fieldtrip/data/test/bug367/ctf151.mat'));
+grad275 = ft_read_sens(dccnpath('/home/common/matlab/fieldtrip/data/test/bug367/ctf275.mat'));
 
 vol = [];
 vol.r = 12;
@@ -27,7 +25,7 @@ vol.unit = 'cm';
 cfg = [];
 cfg.dip.pos = [0 0 13.5];  % 4 + 12 - 2.5
 cfg.dip.frequency = 1;
-cfg.vol = vol;
+cfg.headmodel = vol;
 cfg.grad = grad151;
 data151 = ft_dipolesimulation(cfg);
 cfg.grad = grad275;
@@ -43,7 +41,7 @@ avg275 = ft_timelockanalysis(cfg, data275);
 % to avg151 would show.
 cfg = [];
 cfg.inwardshift = 3;
-cfg.vol = vol;
+cfg.headmodel = vol;
 cfg.template{1} = grad151; avg151_151 = ft_timelockanalysis([], ft_megrealign(cfg, avg151));
 cfg.template{1} = grad275; avg151_275 = ft_timelockanalysis([], ft_megrealign(cfg, avg151));
 cfg.template{1} = grad151; avg275_151 = ft_timelockanalysis([], ft_megrealign(cfg, avg275));
@@ -67,5 +65,3 @@ title('Interpolated from 151 to 151');
 cfg = [];
 figure; ft_multiplotER(cfg, avg151, avg151_151, avg275_151);
 figure; ft_multiplotER(cfg, avg275, avg275_275, avg151_275);
-
-

@@ -1,10 +1,8 @@
 function test_bug2518a
 
 % WALLTIME 00:30:00
-% MEM 2500mb
-
-% TEST test_bug2518a
-% TEST ft_componentanalysis
+% MEM 3gb
+% DEPENDENCY ft_componentanalysis
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % for these functions I don't really know whether and how they should work

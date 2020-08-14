@@ -1,9 +1,9 @@
-function [isih] = ft_spike_isi(cfg,spike)
+function [isih] = ft_spike_isi(cfg, spike)
 
 % FT_SPIKE_ISI computes the interspike interval histogram
 %
-% The input SPIKE should be organised as 
-% a) the spike datatype, obtained from FT_SPIKE_MAKETRIALS 
+% The input SPIKE should be organised as
+% a) the spike datatype, obtained from FT_SPIKE_MAKETRIALS
 % b) the raw datatype, containing binary spike trains, obtained from
 % FT_APPENDSPIKE or FT_CHECKDATA. In this case the raw datatype is
 % converted to the spike datatype.
@@ -30,7 +30,7 @@ function [isih] = ft_spike_isi(cfg,spike)
 %      'gamfit'      : returns [shape scale] for gamma distribution fit
 %      'coeffvar'    : coefficient of variation (sd / mean)
 %      'lv'          : Shinomoto's Local Variation measure (2009)
-
+%
 % Outputs:
 %   isih.avg             = nUnits-by-nBins interspike interval histogram
 %   isih.time            = 1 x nBins bincenters corresponding to isih.avg
@@ -39,21 +39,40 @@ function [isih] = ft_spike_isi(cfg,spike)
 %                          second spike fired was 0.1 s later than the
 %                          first. Note that jumps within trials or first
 %                          spikes within trials are given NaNs.
-%   isih.label           = 1-by-nUnits cell array with labels
+%   isih.label           = 1-by-nUnits cell-array with labels
 
 % Copyright (C) 2010-2012, Martin Vinck
 %
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
+% for the documentation and details.
+%
+%    FieldTrip is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+%
+%    FieldTrip is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+%    GNU General Public License for more details.
+%
+%    You should have received a copy of the GNU General Public License
+%    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
+%
 % $Id$
 
-revision = '$Id$';
+% these are used by the ft_preamble/ft_postamble function and scripts
+ft_revision = '$Id$';
+ft_nargin   = nargin;
+ft_nargout  = nargout;
 
 % do the general setup of the function
 ft_defaults
 ft_preamble init
-ft_preamble callinfo
+ft_preamble provenance spike
 ft_preamble trackconfig
 
-% check if data is of proper format 
+% check if data is of proper format
 spike = ft_checkdata(spike,'datatype', 'spike', 'feedback', 'yes');
 
 % get the default options
@@ -70,16 +89,16 @@ cfg = ft_checkopt(cfg,'outputunit','char', {'spikecount', 'proportion'});
 cfg = ft_checkopt(cfg,'bins', 'ascendingdoublevector');
 cfg = ft_checkopt(cfg,'spikechannel',{'cell', 'char', 'double'});
 cfg = ft_checkopt(cfg,'latency', {'char', 'ascendingdoublebivector'});
-cfg = ft_checkopt(cfg,'trials', {'char', 'doublevector', 'logical'}); 
+cfg = ft_checkopt(cfg,'trials', {'char', 'doublevector', 'logical'});
 cfg = ft_checkopt(cfg,'keeptrials', 'char', {'yes', 'no'});
 cfg = ft_checkopt(cfg,'param', 'char', {'gamfit', 'coeffvar', 'lv'});
 
-cfg = ft_checkconfig(cfg, 'allowed', {'param', 'outputunit', 'bins', 'spikechannel', 'latency', 'trials', 'keeptrials', 'warning', 'progress'});
+cfg = ft_checkconfig(cfg, 'allowed', {'param', 'outputunit', 'bins', 'spikechannel', 'latency', 'trials', 'keeptrials'});
 
 % get the number of trials or change DATA according to cfg.trials
 if  strcmp(cfg.trials,'all')
   cfg.trials = 1:size(spike.trialtime,1);
-elseif islogical(cfg.trials)
+elseif islogical(cfg.trials) || all(cfg.trials==0 | cfg.trials==1)
   cfg.trials = find(cfg.trials);
 end
 cfg.trials = sort(cfg.trials);
@@ -132,7 +151,7 @@ for iUnit = 1:nUnits
   isi(trialJump) = NaN;
   
   switch cfg.param
-  case 'coeffvar'      
+  case 'coeffvar'
     out(iUnit) = nanstd(isi)./nanmean(isi);
   case 'gamfit'
     data = isi(~isnan(isi));  % remove the nans from isiSpike
@@ -155,7 +174,7 @@ for iUnit = 1:nUnits
 end
 
 isihist(:,end) = []; % the last number is only an equality to a bin edge
-if strcmp(cfg.outputunit,'proportion'),
+if strcmp(cfg.outputunit,'proportion')
   isihist = isihist./repmat(nansum(isihist,2),1,size(isihist,2));
 end
 
@@ -170,8 +189,6 @@ isih.(param) = out;
 
 % do the general cleanup and bookkeeping at the end of the function
 ft_postamble trackconfig
-ft_postamble callinfo
-ft_postamble previous spike
-ft_postamble history isih
-
-
+ft_postamble previous   spike
+ft_postamble provenance isih
+ft_postamble history    isih
